@@ -34,8 +34,8 @@ struct null_terminated_ptr {
   char *value;
 };
 
-void prints(null_terminated_ptr str) {
-  std::cout << static_cast<const char*>(str) << std::endl;
+void prints(const char *str) {
+  std::cout << str << std::endl;
 }
 void printui(uint64_t val) {
   std::cout << val << std::endl;
@@ -48,8 +48,7 @@ void eosio_assert(bool test, const char *msg) {
   }
 }
 
-void eosio_assert_code( bool condition, uint64_t error_code ){
-
+void eosio_assert_code( bool condition, uint64_t error_code ) {
 }
 
 template<typename T>
@@ -71,7 +70,7 @@ struct array_ptr {
   T *value;
 };
 
-int read_action_data(array_ptr<char> memory, uint32_t buffer_size) {
+int read_action_data(const char *memory, uint32_t buffer_size) {
 //  auto s = context.get_action().data.size();
 //  if( buffer_size == 0 ) return s;
 //
@@ -89,7 +88,6 @@ int action_data_size() {
 
 struct mocked_host_methods{
 //  void print_name(const char* nm) { std::cout << "Name : " << nm << " " << field << "\n"; }
-  void prints(const char* nm) { std::cout << "Name : " << nm << " " << "\n"; }
   static void* memset(void* ptr, int x, size_t n) { return ::memset(ptr, x, n); }
   static void* memcpy(void* ptr, const void * x, size_t n) { return ::memcpy(ptr, x, n); }
 };
@@ -121,15 +119,14 @@ protected:
     (import "env" "memcpy" (func (;6;) (type 4)))
     (import "env" "eosio_assert_code" (func (;7;) (type 6)))*/
 
+    rhf_t::add<nullptr_t, &prints, eosio::vm::wasm_allocator>("env","prints");
     rhf_t::add<nullptr_t, &printui, eosio::vm::wasm_allocator>("env","printui");
-//    rhf_t::add<nullptr_t, &prints, eosio::vm::wasm_allocator>("env","prints");
-//    rhf_t::add<nullptr_t, &mocked_host_methods::prints, eosio::vm::wasm_allocator>("env","prints");
-    rhf_t::add<nullptr_t, &mocked_host_methods::memset, eosio::vm::wasm_allocator>("env", "memset");
-    rhf_t::add<nullptr_t, &mocked_host_methods::memcpy, eosio::vm::wasm_allocator>("env", "memcpy");
+    rhf_t::add<nullptr_t, &action_data_size, eosio::vm::wasm_allocator>("env", "action_data_size");
     rhf_t::add<nullptr_t, &eosio_assert, eosio::vm::wasm_allocator>("env", "eosio_assert");
+    rhf_t::add<nullptr_t, &mocked_host_methods::memset, eosio::vm::wasm_allocator>("env", "memset");
+    rhf_t::add<nullptr_t, &read_action_data, eosio::vm::wasm_allocator>("env", "read_action_data");
+    rhf_t::add<nullptr_t, &mocked_host_methods::memcpy, eosio::vm::wasm_allocator>("env", "memcpy");
     rhf_t::add<nullptr_t, &eosio_assert_code, eosio::vm::wasm_allocator>("env", "eosio_assert_code");
-//    rhf_t::add<nullptr_t, &read_action_data, eosio::vm::wasm_allocator>("env", "read_action_data");
-//    rhf_t::add<nullptr_t, &action_data_size, eosio::vm::wasm_allocator>("env", "action_data_size");
 
     backend_t backend(wasm,rhf_t{});
     eosio::vm::wasm_allocator wa;
