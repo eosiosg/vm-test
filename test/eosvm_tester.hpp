@@ -69,7 +69,7 @@ int read_action_data(const char *memory, uint32_t buffer_size) {
 
 int action_data_size() { return 2*sizeof(uint64_t); }
 
-struct mocked_host_methods {
+struct mocked_context {
   //  void print_name(const char* nm) { std::cout << "Name : " << nm << " " <<
   //  field << "\n"; }
   static void *memset(void *ptr, int x, size_t n) {
@@ -80,8 +80,8 @@ struct mocked_host_methods {
   }
 };
 
-using backend_t = eosio::vm::backend<mocked_host_methods>;
-using rhf_t = eosio::vm::registered_host_functions<mocked_host_methods>;
+using backend_t = eosio::vm::backend<mocked_context>;
+using rhf_t = eosio::vm::registered_host_functions<mocked_context>;
 
 class eosvm_tester : public testing::Test {
 protected:
@@ -113,11 +113,11 @@ protected:
         "env", "action_data_size");
     rhf_t::add<nullptr_t, &eosio_assert, eosio::vm::wasm_allocator>(
         "env", "eosio_assert");
-    rhf_t::add<nullptr_t, &mocked_host_methods::memset,
+    rhf_t::add<nullptr_t, &mocked_context::memset,
                eosio::vm::wasm_allocator>("env", "memset");
     rhf_t::add<nullptr_t, &read_action_data, eosio::vm::wasm_allocator>(
         "env", "read_action_data");
-    rhf_t::add<nullptr_t, &mocked_host_methods::memcpy,
+    rhf_t::add<nullptr_t, &mocked_context::memcpy,
                eosio::vm::wasm_allocator>("env", "memcpy");
     rhf_t::add<nullptr_t, &eosio_assert_code, eosio::vm::wasm_allocator>(
         "env", "eosio_assert_code");
@@ -131,7 +131,7 @@ protected:
     // Resolve the host functions indices.
 
     // Instaniate a "host"
-    mocked_host_methods hm;
+    mocked_context hm;
     uint64_t a = 3;
     uint64_t b = 4;
     backend(&hm, "env", "apply","test"_n.value, "test"_n.value, "add"_n.value);

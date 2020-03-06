@@ -28,11 +28,6 @@ add_subdirectory(${CMAKE_CURRENT_BINARY_DIR}/googletest-src
         EXCLUDE_FROM_ALL)
 
 
-
-
-
-
-
 file(COPY contract DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
 
 
@@ -45,6 +40,29 @@ gtest_add_tests(
 
 add_executable(VMTest vm_test.cpp)
 target_link_libraries(VMTest gtest_main eos-vm)
+
+add_executable(TokenTest eosio_token_test.cpp)
+target_link_libraries(TokenTest gtest_main eos-vm)
+
+set(OPENSSL_ROOT_DIR /usr/local/Cellar/openssl@1.1/1.1.1d/)
+set(OPENSSL_LIBRARIES /usr/local/Cellar/openssl@1.1/1.1.1d/lib)
+
+find_package(OpenSSL REQUIRED)
+if(OPENSSL_FOUND)
+    if(APPLE)
+        include_directories(/usr/local/Cellar/openssl@1.1/1.1.1d/include)
+        list(APPEND LIB_LIST /usr/local/Cellar/openssl@1.1/1.1.1d/lib/libssl.dylib)
+        list(APPEND LIB_LIST /usr/local/Cellar/openssl@1.1/1.1.1d/lib/libcrypto.dylib)
+        message(STATUS "OpenSSL Version: ${OPENSSL_VERSION} ${OPENSSL_INCLUDE_DIR} ${OPENSSL_LIBRARIES}")
+    else()
+        include_directories(${OPENSSL_INCLUDE_DIR})
+        list(APPEND LIB_LIST ${OPENSSL_LIBRARIES})
+        message(STATUS "OpenSSL Version: ${OPENSSL_VERSION} ${OPENSSL_INCLUDE_DIR} ${OPENSSL_LIBRARIES}")
+    endif()
+endif()
+
+add_executable(ChallengeTest challenge_test.cpp)
+target_link_libraries(ChallengeTest gtest_main eos-vm OpenSSL::SSL)
 
 gtest_add_tests(
         TARGET VMTest
