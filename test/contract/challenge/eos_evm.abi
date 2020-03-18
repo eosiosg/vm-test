@@ -22,7 +22,35 @@
                 },
                 {
                     "name": "salt",
+                    "type": "string$"
+                }
+            ]
+        },
+        {
+            "name": "createeth",
+            "base": "",
+            "fields": [
+                {
+                    "name": "eos_account",
+                    "type": "name"
+                },
+                {
+                    "name": "eth_address",
                     "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "extended_symbol",
+            "base": "",
+            "fields": [
+                {
+                    "name": "sym",
+                    "type": "symbol"
+                },
+                {
+                    "name": "contract",
+                    "type": "name"
                 }
             ]
         },
@@ -36,17 +64,7 @@
                 },
                 {
                     "name": "sender",
-                    "type": "eth_addr_160?"
-                }
-            ]
-        },
-        {
-            "name": "rawtest",
-            "base": "",
-            "fields": [
-                {
-                    "name": "hexcode",
-                    "type": "hex_code"
+                    "type": "eth_addr_160$"
                 }
             ]
         },
@@ -69,16 +87,12 @@
             ]
         },
         {
-            "name": "setcode",
+            "name": "settoken",
             "base": "",
             "fields": [
                 {
-                    "name": "eth_address",
-                    "type": "eth_addr_160"
-                },
-                {
-                    "name": "evm_code",
-                    "type": "hex_code"
+                    "name": "contract",
+                    "type": "extended_symbol"
                 }
             ]
         },
@@ -163,50 +177,16 @@
             ]
         },
         {
-            "name": "st_global_nonce",
+            "name": "st_token_contract",
             "base": "",
             "fields": [
                 {
-                    "name": "nonce",
+                    "name": "id",
                     "type": "uint64"
-                }
-            ]
-        },
-        {
-            "name": "transfers",
-            "base": "",
-            "fields": [
-                {
-                    "name": "from",
-                    "type": "name"
                 },
                 {
-                    "name": "amount",
-                    "type": "asset"
-                }
-            ]
-        },
-        {
-            "name": "updateeth",
-            "base": "",
-            "fields": [
-                {
-                    "name": "eth_address",
-                    "type": "eth_addr_160"
-                },
-                {
-                    "name": "eos_account",
-                    "type": "name"
-                }
-            ]
-        },
-        {
-            "name": "verifysig",
-            "base": "",
-            "fields": [
-                {
-                    "name": "trx_code",
-                    "type": "hex_code"
+                    "name": "contract",
+                    "type": "extended_symbol"
                 }
             ]
         },
@@ -232,13 +212,13 @@
             "ricardian_contract": ""
         },
         {
-            "name": "raw",
-            "type": "raw",
+            "name": "createeth",
+            "type": "createeth",
             "ricardian_contract": ""
         },
         {
-            "name": "rawtest",
-            "type": "rawtest",
+            "name": "raw",
+            "type": "raw",
             "ricardian_contract": ""
         },
         {
@@ -247,23 +227,8 @@
             "ricardian_contract": ""
         },
         {
-            "name": "setcode",
-            "type": "setcode",
-            "ricardian_contract": ""
-        },
-        {
-            "name": "transfers",
-            "type": "transfers",
-            "ricardian_contract": ""
-        },
-        {
-            "name": "updateeth",
-            "type": "updateeth",
-            "ricardian_contract": ""
-        },
-        {
-            "name": "verifysig",
-            "type": "verifysig",
+            "name": "settoken",
+            "type": "settoken",
             "ricardian_contract": ""
         },
         {
@@ -302,8 +267,8 @@
             "key_types": []
         },
         {
-            "name": "globalnonce",
-            "type": "st_global_nonce",
+            "name": "contract",
+            "type": "st_token_contract",
             "index_type": "i64",
             "key_names": [],
             "key_types": []
