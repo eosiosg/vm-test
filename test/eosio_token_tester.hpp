@@ -1,6 +1,7 @@
 //
 // Created by Vince on 26/2/20.
 //
+#include <stdio.h>
 #include <eosio/vm/backend.hpp>
 #include <eosio/vm/watchdog.hpp>
 #include <eosio/vm/execution_context.hpp>
@@ -35,24 +36,32 @@ protected:
       // Instantiate a "host"
 
       db_type database;
-    struct asset {
-        uint64_t amount;
+      secondary_key_type<uint64_t > i64_index;
+      secondary_key_type<array<uint128_t, 2>> i256_index;
+      typedef struct __attribute__((packed)) {
+        int64_t amount;
         uint64_t symbol;
-    };
-    struct issue {
+    } asset;
+      struct issue {
         uint64_t issuer;
         asset    token;
+        string   memo;
+        void pack(vector<char>& dest) {
+            dest.resize(sizeof(issuer ) + sizeof(token));
+            memcpy(&dest[0], &issuer , sizeof(issuer ));
+            memcpy(&dest[sizeof(issuer )], &token , sizeof(token ));
+            dest.emplace_back(memo.size());
+            copy(memo.begin(), memo.end(), back_inserter<vector<char> >(dest));
+        }
     };
+      auto issue_s = issue{3773036822876127232, 500000, 1313559555, "aaaaaa"};
 
-    auto && issue_s = issue{137482933937111040, 10000, 1397703938};
-    auto size = sizeof(issue_s );
 
     auto && data = bytes();
-    data.resize(size);
+    issue_s.pack(data);
 
-    memcpy(&data[0], &issue_s , size);
 
-    mocked_context hm(".bob"_n.value, ".bob"_n.value, "create"_n.value, data, database);
+    mocked_context hm(".bob"_n.value, ".bob"_n.value, "create"_n.value, data, database, i64_index, i256_index);
 
     rhf_t::template add<mocked_context, &mocked_context::require_auth, eosio::vm::wasm_allocator>("env", "require_auth");
     rhf_t::template add<mocked_context, &mocked_context::eosio_assert, eosio::vm::wasm_allocator>("env", "eosio_assert");

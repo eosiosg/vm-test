@@ -64,6 +64,9 @@ endif()
 add_executable(ChallengeTest challenge_test.cpp)
 target_link_libraries(ChallengeTest gtest_main eos-vm OpenSSL::SSL)
 
+
+add_executable(MultiIndexTest multi_index_test.cpp)
+target_link_libraries(MultiIndexTest gtest_main eos-vm)
 gtest_add_tests(
         TARGET VMTest
 )
