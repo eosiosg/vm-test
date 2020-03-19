@@ -30,6 +30,10 @@ add_subdirectory(${CMAKE_CURRENT_BINARY_DIR}/googletest-src
 
 file(COPY contract DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
 
+aux_source_directory(. DIR_LIB_SRCS)
+
+include_directories(../secp256k1/upstream/include)
+add_library (test other_fc base58 ${DIR_LIB_SRCS})
 
 add_executable(HelloTest hello_test.cpp)
 target_link_libraries(HelloTest gtest_main eos-vm)

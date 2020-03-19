@@ -5,6 +5,9 @@
 #include <openssl/ripemd.h>
 #include <utility>
 
+#include "other_fc.hpp"
+#include "serialization.hpp"
+
 using uint128_t           = unsigned __int128;
 
 using namespace std;
@@ -706,8 +709,18 @@ public:
         RIPEMD160( reinterpret_cast<const unsigned char *>(data.value), datalen, (unsigned char *) hash_val);
     }
 
-    int recover_key(const char *digest, array_ptr<char> sig, uint32_t siglen, array_ptr<char> pub, uint32_t publen ) {
-        return 34;
+    int recover_key(sz::sha256& digest, array_ptr<char> sig, uint32_t siglen, array_ptr<char> pub, uint32_t publen ) {
+        enum VType {XXX, YYY, ZZZ};
+        sz::Deserialization<sz::signature, VType> deserialization{};
+        deserialization.setBuffer(sig, siglen);
+        sz::signature s{};
+        VType vType;
+        deserialization.unpack(s, vType);
+        auto recovered = sz::public_key(s, digest);
+        sz::Serialization<sz::public_key, VType> serialization;
+        serialization.setBuffer(pub, publen);
+        serialization.pack(recovered, ZZZ);
+        return recovered.storage.size();
     }
 
     void assert_recover_key(const char *digest, const char *sig, size_t siglen, const char *pub, size_t publen) {
