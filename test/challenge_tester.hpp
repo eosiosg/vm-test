@@ -3,6 +3,7 @@
 //
 
 #include <eosio/vm/backend.hpp>
+#include <memory>
 #include <utility>
 #include <eosio/vm/watchdog.hpp>
 #include <eosio/vm/execution_context.hpp>
@@ -99,12 +100,11 @@ public:
 
         std::copy(tmp.begin(), tmp.end(), std::back_inserter(wasm));
 
-        backend = make_shared<backend_t>(backend_t(wasm));
+        backend = std::make_shared<backend_t>(wasm);
 
         eosio::vm::wasm_allocator wa;
         // Point the backend to the allocator you want it to use.
         backend->set_wasm_allocator(&wa);
-        backend->initialize();
         // Resolve the host functions indices.
         keyval_cache = {};
         i64_sec_keyval_cache = {};
@@ -231,7 +231,6 @@ public:
     };
 
     void set_token(extended_symbol ex_sym) {
-        // check action
         auto &&set_token = settoken_act{ex_sym.sym, ex_sym.contract};
 
         auto &&set_token_data = bytes();
@@ -249,8 +248,6 @@ public:
     }
 
     void create(uint64_t account, string salt) {
-
-        // create action
         auto &&create_acc = create_act{account, std::move(salt)};
 
         auto &&create_acc_data = bytes();
@@ -267,71 +264,71 @@ public:
         backend->timed_run(wd, fn);
     }
 
-        void createeth(uint64_t account, eth_addr eth_address) {
-            auto &&createeth_acc = createeth_act{account, std::move(eth_address)};
+    void createeth(uint64_t account, eth_addr eth_address) {
+        auto &&createeth_acc = createeth_act{account, std::move(eth_address)};
 
-            auto &&createeth_acc_data = bytes();
-            createeth_acc.pack(createeth_acc_data);
-            mocked_context createeth_acc_ctx(code, code, "createeth"_n.value, createeth_acc_data,
-                                             database, i64_index, i256_index, keyval_cache, i64_sec_keyval_cache,
-                                             i256_sec_keyval_cache);
-            auto fn = [&]() {
-                backend->initialize(&createeth_acc_ctx);
-                const auto &res = backend->call(
-                        &createeth_acc_ctx, "env", "apply", createeth_acc_ctx.get_receiver(),
-                        createeth_acc_ctx.get_account(),
-                        createeth_acc_ctx.get_action());
-            };
-            backend->timed_run(wd, fn);
-        }
-
-        void raw(hex_code trx_code, eth_addr sender = "") {
-            auto &&raw_action = raw_act{};
-            raw_action.trx_code = std::move(trx_code);
-            raw_action.sender = std::move(sender);
-            auto &&raw_act_data = bytes();
-            raw_action.pack(raw_act_data);
-            mocked_context raw_act_ctx(code, code, "raw"_n.value, raw_act_data,
-                                       database, i64_index, i256_index, keyval_cache, i64_sec_keyval_cache,
-                                       i256_sec_keyval_cache);
-            auto fn = [&]() {
-                backend->initialize(&raw_act_ctx);
-                const auto &res = backend->call(
-                        &raw_act_ctx, "env", "apply", raw_act_ctx.get_receiver(),
-                        raw_act_ctx.get_account(),
-                        raw_act_ctx.get_action());
-            };
-            backend->timed_run(wd, fn);
-        }
-
-        void rawtrxexe(hex_code trx_param, eth_addr eth_address, eth_addr sender) {
-            auto &&rawtrxexe_action = rawtrxexe_act{};
-            rawtrxexe_action.trx_param = std::move(trx_param);
-            rawtrxexe_action.eth_address = std::move(eth_address);
-            rawtrxexe_action.sender = std::move(sender);
-            auto &&rawtrxexe_data = bytes();
-            rawtrxexe_action.pack(rawtrxexe_data);
-            mocked_context rawtrxexe_ctx(code, code, "raw"_n.value, rawtrxexe_data,
+        auto &&createeth_acc_data = bytes();
+        createeth_acc.pack(createeth_acc_data);
+        mocked_context createeth_acc_ctx(code, code, "createeth"_n.value, createeth_acc_data,
                                          database, i64_index, i256_index, keyval_cache, i64_sec_keyval_cache,
                                          i256_sec_keyval_cache);
-            auto fn = [&]() {
-                backend->initialize(&rawtrxexe_ctx);
-                const auto &res = backend->call(
-                        &rawtrxexe_ctx, "env", "apply", rawtrxexe_ctx.get_receiver(),
-                        rawtrxexe_ctx.get_account(),
-                        rawtrxexe_ctx.get_action());
-            };
-            backend->timed_run(wd, fn);
-        }
+        auto fn = [&]() {
+            backend->initialize(&createeth_acc_ctx);
+            const auto &res = backend->call(
+                    &createeth_acc_ctx, "env", "apply", createeth_acc_ctx.get_receiver(),
+                    createeth_acc_ctx.get_account(),
+                    createeth_acc_ctx.get_action());
+        };
+        backend->timed_run(wd, fn);
+    }
+
+    void raw(hex_code trx_code, eth_addr sender = "") {
+        auto &&raw_action = raw_act{};
+        raw_action.trx_code = std::move(trx_code);
+        raw_action.sender = std::move(sender);
+        auto &&raw_act_data = bytes();
+        raw_action.pack(raw_act_data);
+        mocked_context raw_act_ctx(code, code, "raw"_n.value, raw_act_data,
+                                   database, i64_index, i256_index, keyval_cache, i64_sec_keyval_cache,
+                                   i256_sec_keyval_cache);
+        auto fn = [&]() {
+            backend->initialize(&raw_act_ctx);
+            const auto &res = backend->call(
+                    &raw_act_ctx, "env", "apply", raw_act_ctx.get_receiver(),
+                    raw_act_ctx.get_account(),
+                    raw_act_ctx.get_action());
+        };
+        backend->timed_run(wd, fn);
+    }
+
+    void rawtrxexe(hex_code trx_param, eth_addr eth_address, eth_addr sender) {
+        auto &&rawtrxexe_action = rawtrxexe_act{};
+        rawtrxexe_action.trx_param = std::move(trx_param);
+        rawtrxexe_action.eth_address = std::move(eth_address);
+        rawtrxexe_action.sender = std::move(sender);
+        auto &&rawtrxexe_data = bytes();
+        rawtrxexe_action.pack(rawtrxexe_data);
+        mocked_context rawtrxexe_ctx(code, code, "raw"_n.value, rawtrxexe_data,
+                                     database, i64_index, i256_index, keyval_cache, i64_sec_keyval_cache,
+                                     i256_sec_keyval_cache);
+        auto fn = [&]() {
+            backend->initialize(&rawtrxexe_ctx);
+            const auto &res = backend->call(
+                    &rawtrxexe_ctx, "env", "apply", rawtrxexe_ctx.get_receiver(),
+                    rawtrxexe_ctx.get_account(),
+                    rawtrxexe_ctx.get_action());
+        };
+        backend->timed_run(wd, fn);
+    }
 
 private:
-    uint64_t code;
-    shared_ptr<backend_t> backend;
-    eosio::vm::watchdog wd{std::chrono::seconds(3000000)};
-    db_type database;
-    secondary_key_type<uint64_t> i64_index;
-    secondary_key_type<array<uint128_t, 2>> i256_index;
-    vector<kv_type> keyval_cache;
-    vector<i64_sec_kv_type> i64_sec_keyval_cache;
-    vector<i256_sec_kv_type> i256_sec_keyval_cache;
+    uint64_t                                 code;
+    std::shared_ptr<backend_t>               backend;
+    eosio::vm::watchdog                      wd{std::chrono::seconds(3000000)};
+    db_type                                  database;
+    secondary_key_type<uint64_t>             i64_index;
+    secondary_key_type<array<uint128_t, 2>>  i256_index;
+    vector<kv_type>                          keyval_cache;
+    vector<i64_sec_kv_type>                  i64_sec_keyval_cache;
+    vector<i256_sec_kv_type>                 i256_sec_keyval_cache;
 };

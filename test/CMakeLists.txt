@@ -78,7 +78,7 @@ target_link_libraries(ChallengeTest gtest_main eos-vm OpenSSL::SSL secp256k1)
 
 
 add_executable(MultiIndexTest multi_index_test.cpp)
-target_link_libraries(MultiIndexTest gtest_main eos-vm)
+target_link_libraries(MultiIndexTest gtest_main eos-vm secp256k1)
 gtest_add_tests(
         TARGET VMTest
 )

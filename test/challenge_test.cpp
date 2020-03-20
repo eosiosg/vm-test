@@ -10,7 +10,7 @@ TEST_F(challenge_tester, basic){
   REGISTER_CALLABLE_CLASS(sz::signature, sz::signature::serialize, sz::signature::deserialize);
     init(std::string("contract/challenge/eos_evm.wasm"), "bpa"_n.value);
 
-    set_token({1397703940, 6138663591592764928});
+    set_token({1397703940, "eosio.token"_n.value});
 
     create("bpb"_n.value, "aaaaaa");
     create("bpc"_n.value, "aaaaaa");
