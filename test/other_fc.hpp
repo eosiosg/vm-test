@@ -1,5 +1,4 @@
-#ifndef NODEOS_TPS_OTHER_FC_H
-#define NODEOS_TPS_OTHER_FC_H
+#pragma once
 #include <string>
 #include <array>
 #include <iostream>
@@ -123,6 +122,8 @@ namespace sz {
         static pair<bool, size_t> deserialize(void *pDstData, const void *pBuffer, size_t bufferLength);
 
         bool operator==(const public_key &k);
+
+        string to_string();
     };
 
     class private_key {
@@ -177,5 +178,3 @@ namespace sz {
     };
 }
 
-
-#endif //NODEOS_TPS_OTHER_FC_H

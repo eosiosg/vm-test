@@ -77,9 +77,9 @@ public_key::public_key(const signature& sig, const sha256& digest, bool require_
         throw "signature is not canonical.";
     }
     unsigned int pk_len;
-    secp256k1_ecdsa_recover_compact(_get_context(), (unsigned char*) digest.data(), (unsigned char*) sig.data(), (unsigned char*) storage.data(), (int *) &pk_len, 1, (*sig.data() - 27) & 3 );
+    storage.resize(33);
+    secp256k1_ecdsa_recover_compact(_get_context(), (unsigned char*) digest.data(), (unsigned char*) sig.data() + 1, (unsigned char*) storage.data(), (int *) &pk_len, (int) 1, (*sig.data() - 27) & 3 );
 }
-
 
 pair<bool, size_t> public_key::serialize(void* pDstBuffer, const void* pData, size_t bufferSize) {
     auto len = ((vector<char>*)pData)->size(); //实际上是定长33Bytes
@@ -102,6 +102,12 @@ bool public_key::operator==(const public_key& k) {
         if(storage[i] != k.storage[i]) return false;
     }
     return true;
+}
+
+string public_key::to_string() {
+    auto sub_str = to_base58(storage.data(), 33);
+    auto ret = sub_str.insert(0, public_key_legacy_prefix.data());
+    return ret;
 }
 
 int extended_nonce_function( unsigned char *nonce32, const unsigned char *msg32,

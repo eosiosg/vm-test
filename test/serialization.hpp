@@ -1,9 +1,3 @@
-//
-// Created by zwg on 19-6-6.
-//
-
-#ifndef NODEOS_TPS_SERIALIZATION_H
-#define NODEOS_TPS_SERIALIZATION_H
 
 #include <iostream>
 #include <string>
@@ -361,10 +355,10 @@ namespace sz {
         }
         inline pair<bool, size_t> pack(const T& src, const HeaderType& headerCode) {
             uint8_t code = uint8_t(headerCode); //暂不支持>127个类的情况
-            if(buffer.maxSize < sizeof(code))
-                return make_pair(false, 0);
-            ((uint8_t *)buffer.buffer)[0] = code;
-            buffer.curPos = sizeof(code);
+//            if(buffer.maxSize < sizeof(code))
+//                return make_pair(false, 0);
+//            ((uint8_t *)buffer.buffer)[0] = code;
+//            buffer.curPos = sizeof(code);
             return __pack_2(&src, typeid(src).hash_code());
         }
     };
@@ -408,9 +402,9 @@ namespace sz {
         }
         pair<bool, size_t> unpack(T& data, HeaderType& headerCode) {
             auto hash = typeid(T).hash_code();
-            memcpy(&headerCode, pBuffer, sizeof(uint8_t));
-            memset(((char*)&headerCode) + sizeof(uint8_t), 0, sizeof(HeaderType) - sizeof(uint8_t));
-            curPos ++;
+//            memcpy(&headerCode, pBuffer, sizeof(uint8_t));
+//            memset(((char*)&headerCode) + sizeof(uint8_t), 0, sizeof(HeaderType) - sizeof(uint8_t));
+//            curPos ++;
             auto ret = make_pair(__unpack(hash, &data), curPos);
             pBuffer = nullptr;
             curPos = 0;
@@ -419,5 +413,3 @@ namespace sz {
         }
     };
 }
-
-#endif //NODEOS_TPS_SERIALIZATION_H

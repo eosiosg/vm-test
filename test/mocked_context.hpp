@@ -711,16 +711,16 @@ public:
 
     int recover_key(sz::sha256& digest, array_ptr<char> sig, uint32_t siglen, array_ptr<char> pub, uint32_t publen ) {
         enum VType {XXX, YYY, ZZZ};
-        sz::Deserialization<sz::signature, VType> deserialization{};
+        sz::Deserialization<sz::signature, VType> deserialization;
         deserialization.setBuffer(sig, siglen);
-        sz::signature s{};
+        sz::signature s;
         VType vType;
         deserialization.unpack(s, vType);
-        auto recovered = sz::public_key(s, digest);
+        auto recovered = sz::public_key(s, digest, false);
         sz::Serialization<sz::public_key, VType> serialization;
         serialization.setBuffer(pub, publen);
         serialization.pack(recovered, ZZZ);
-        return recovered.storage.size();
+        return recovered.storage.size()+1;
     }
 
     void assert_recover_key(const char *digest, const char *sig, size_t siglen, const char *pub, size_t publen) {
