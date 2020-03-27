@@ -355,7 +355,7 @@ namespace eosio {
 using namespace eosio::chain;
 class mocked_context {
 public:
-    mocked_context(eosio::name receiver, eosio::name account, eosio::name name, bytes action_data, db_type& db, secondary_key_type<uint64_t>&  i64_index, secondary_key_type<array<uint128_t, 2>>& i256_index, vector<kv_type>& keyval_cache, vector<i64_sec_kv_type>& i64_sec_keyval_cache, vector<i256_sec_kv_type>& i256_sec_keyval_cache)
+    mocked_context(eosio::name receiver, eosio::name account, eosio::name name, bytes action_data, db_type& db, secondary_key_type<uint64_t>&  i64_index, secondary_key_type<array<uint128_t, 2>>& i256_index, vector<kv_type>& keyval_cache, vector<i64_sec_kv_type>& i64_sec_keyval_cache, vector<i256_sec_kv_type>& i256_sec_keyval_cache, map<string, string>& output)
             :receiver(receiver)
             ,account(account)
             ,action_name(name)
@@ -366,14 +366,11 @@ public:
             ,keyval_cache(keyval_cache)
             ,i64_sec_keyval_cache(i64_sec_keyval_cache)
             ,i256_sec_keyval_cache(i256_sec_keyval_cache)
+            ,output(output)
     {
         keyval_cache = {};
         i64_sec_keyval_cache = {};
         i256_sec_keyval_cache = {};
-        output.emplace(pair{"status_code",""});
-        output.emplace(pair{"output",""});
-        output.emplace(pair{"gas_left", ""});
-        output.emplace(pair{"json", ""});
     }
 
     char* memcpy( array_ptr<char> dest, array_ptr<const char> src, uint32_t length) {
@@ -399,14 +396,14 @@ public:
     void prints(null_terminated_ptr str) {
         string tmp(static_cast<const char*>(str));
         std::cout << tmp;
-        if (tmp.find("output") != std::string::npos) {
-            output.erase("status_code");
-        } else if (tmp.find("from") != std::string::npos) {
-            output.erase("output");
-        } else if (tmp.find("gas_usage") != std::string::npos) {
-            output.erase("gas_left");
-        } else if (tmp.find(" print receipt as json: ") != std::string::npos) {
+        if (tmp.find(" print receipt as json: ") != std::string::npos) {
             output.erase("json");
+        } else if (tmp.find("status_code :") != std::string::npos) {
+            output.erase("status_code");
+        } else if (tmp.find("output      :") != std::string::npos) {
+            output.erase("output");
+        } else if (tmp.find("gas_left    :") != std::string::npos) {
+            output.erase("gas_left");
         }
     }
     void printui(uint64_t val) {
@@ -482,34 +479,34 @@ public:
         return copy_size;
     }
 
-    void __extendsftf2( float128_t* ret, float f ) {
-        *ret = f32_to_f128( to_softfloat32(f) );
+    void __extendsftf2( float128_t& ret, float f ) {
+        ret = f32_to_f128( to_softfloat32(f) );
     }
 
-    void __floatsitf( float128_t* ret, int32_t i ) {
-        *ret = i32_to_f128(i);
+    void __floatsitf( float128_t& ret, int32_t i ) {
+        ret = i32_to_f128(i);
     }
 
-    void __multf3( float128_t* ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
+    void __multf3( float128_t& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
         float128_t a = {{ la, ha }};
         float128_t b = {{ lb, hb }};
-        *ret = f128_mul( a, b );
+        ret = f128_mul( a, b );
     }
 
-    void __floatunsitf( float128_t* ret, uint32_t i ) {
-        *ret = ui32_to_f128(i);
+    void __floatunsitf( float128_t& ret, uint32_t i ) {
+        ret = ui32_to_f128(i);
     }
 
-    void __divtf3( float128_t* ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
+    void __divtf3( float128_t& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
         float128_t a = {{ la, ha }};
         float128_t b = {{ lb, hb }};
-        *ret = f128_div( a, b );
+        ret = f128_div( a, b );
     }
 
-    void __addtf3( float128_t* ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
+    void __addtf3( float128_t& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
         float128_t a = {{ la, ha }};
         float128_t b = {{ lb, hb }};
-        *ret = f128_add( a, b );
+        ret = f128_add( a, b );
     }
 
     static bool is_nan( const float128_t f ) {
@@ -536,8 +533,8 @@ public:
         return 1;
     }
 
-    void __extenddftf2( float128_t* ret, double d ) {
-        *ret = f64_to_f128( to_softfloat64(d) );
+    void __extenddftf2( float128_t& ret, double d ) {
+        ret = f64_to_f128( to_softfloat64(d) );
     }
 
     int __eqtf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
@@ -552,10 +549,10 @@ public:
         return ___cmptf2(la, ha, lb, hb, 1);
     }
 
-    void __subtf3( float128_t* ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
+    void __subtf3( float128_t& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
         float128_t a = {{ la, ha }};
         float128_t b = {{ lb, hb }};
-        *ret = f128_sub( a, b );
+        ret = f128_sub( a, b );
     }
 
     double __trunctfdf2( uint64_t l, uint64_t h ) {
@@ -575,7 +572,7 @@ public:
     void prints_l(const char *str, uint32_t str_len ) {
         string tmp(str, str_len);
         std::cout << tmp;
-        if (output.find("status_code") ==  output.end()) {
+        if (output.find("status_code") == output.end()) {
             output.emplace(pair{"status_code", tmp});
         }
     }
@@ -1120,5 +1117,5 @@ private:
     eosio::name                               action_name;
     bytes                                     action_data = {};
 public:
-    map<string, string>                       output;
+    map<string, string>&                      output;
 };

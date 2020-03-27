@@ -102,6 +102,7 @@ public:
         // Point the backend to the allocator you want it to use.
         bkend.set_wasm_allocator(&wa);
         // Resolve the host functions indices.
+        output = {{"status_code",""}, {"gas_left",""}, {"output",""}, {"json", ""}};
         keyval_cache = {};
         i64_sec_keyval_cache = {};
         i256_sec_keyval_cache = {};
@@ -190,7 +191,7 @@ public:
         auto &&link_token_data = bytes();
         link_token.pack(link_token_data);
         mocked_context link_token_ctx(code, code, "linktoken"_n, link_token_data, database,
-                                      i64_index, i256_index, keyval_cache, i64_sec_keyval_cache, i256_sec_keyval_cache);
+                                      i64_index, i256_index, keyval_cache, i64_sec_keyval_cache, i256_sec_keyval_cache, output);
         auto fn = [&]() {
             backend.initialize(&link_token_ctx);
             const auto &res = backend.call(
@@ -210,7 +211,7 @@ public:
         auto &&create_acc_data = bytes();
         create_acc.pack(create_acc_data);
         mocked_context create_acc_ctx(code, code, "create"_n, create_acc_data, database,
-                                      i64_index, i256_index, keyval_cache, i64_sec_keyval_cache, i256_sec_keyval_cache);
+                                      i64_index, i256_index, keyval_cache, i64_sec_keyval_cache, i256_sec_keyval_cache, output);
         auto fn = [&]() {
             backend.initialize(&create_acc_ctx);
             const auto &res = backend.call(
@@ -232,7 +233,7 @@ public:
         raw_action.pack(raw_act_data);
         mocked_context raw_act_ctx(code, code, "raw"_n, raw_act_data,
                                    database, i64_index, i256_index, keyval_cache, i64_sec_keyval_cache,
-                                   i256_sec_keyval_cache);
+                                   i256_sec_keyval_cache, output);
         auto fn = [&]() {
             backend.initialize(&raw_act_ctx);
             const auto &res = backend.call(
@@ -259,7 +260,7 @@ public:
         withdraw_action.pack(withdraw_data);
         mocked_context withdraw_ctx(code, code, "withdraw"_n, withdraw_data,
                                     database, i64_index, i256_index, keyval_cache, i64_sec_keyval_cache,
-                                    i256_sec_keyval_cache);
+                                    i256_sec_keyval_cache, output);
         auto fn = [&]() {
             backend.initialize(&withdraw_ctx);
             const auto &res = backend.call(
@@ -281,4 +282,5 @@ private:
     vector<kv_type>                          keyval_cache;
     vector<i64_sec_kv_type>                  i64_sec_keyval_cache;
     vector<i256_sec_kv_type>                 i256_sec_keyval_cache;
+    map<string, string>                      output;
 };
