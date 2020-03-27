@@ -5,7 +5,7 @@
 #include <eosio/vm/watchdog.hpp>
 #include <fstream>
 #include <gtest/gtest.h>
-#include "name.hpp"
+#include "../lib/name.hpp"
 
 namespace eosio {
 namespace vm {

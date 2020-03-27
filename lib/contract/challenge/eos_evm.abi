@@ -1,0 +1,216 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.1",
+    "types": [
+        {
+            "new_type_name": "eth_addr_160",
+            "type": "checksum160"
+        },
+        {
+            "new_type_name": "hex_code",
+            "type": "string"
+        },
+        {
+            "new_type_name": "uint256_t",
+            "type": "checksum256"
+        }
+    ],
+    "structs": [
+        {
+            "name": "create",
+            "base": "",
+            "fields": [
+                {
+                    "name": "eos_account",
+                    "type": "name"
+                },
+                {
+                    "name": "eth_address",
+                    "type": "string$"
+                }
+            ]
+        },
+        {
+            "name": "extended_symbol",
+            "base": "",
+            "fields": [
+                {
+                    "name": "sym",
+                    "type": "symbol"
+                },
+                {
+                    "name": "contract",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "linktoken",
+            "base": "",
+            "fields": [
+                {
+                    "name": "contract",
+                    "type": "extended_symbol"
+                }
+            ]
+        },
+        {
+            "name": "raw",
+            "base": "",
+            "fields": [
+                {
+                    "name": "trx_code",
+                    "type": "hex_code"
+                },
+                {
+                    "name": "sender",
+                    "type": "eth_addr_160$"
+                }
+            ]
+        },
+        {
+            "name": "st_account",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "uint64"
+                },
+                {
+                    "name": "eth_address",
+                    "type": "eth_addr_160"
+                },
+                {
+                    "name": "nonce",
+                    "type": "uint256_t"
+                },
+                {
+                    "name": "balance",
+                    "type": "uint256_t"
+                },
+                {
+                    "name": "eosio_account",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "st_account_code",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "uint64"
+                },
+                {
+                    "name": "eth_address",
+                    "type": "eth_addr_160"
+                },
+                {
+                    "name": "bytecode",
+                    "type": "uint8[]"
+                }
+            ]
+        },
+        {
+            "name": "st_account_state",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "uint64"
+                },
+                {
+                    "name": "key",
+                    "type": "uint256_t"
+                },
+                {
+                    "name": "value",
+                    "type": "uint256_t"
+                }
+            ]
+        },
+        {
+            "name": "st_token_contract",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "uint64"
+                },
+                {
+                    "name": "contract",
+                    "type": "extended_symbol"
+                }
+            ]
+        },
+        {
+            "name": "withdraw",
+            "base": "",
+            "fields": [
+                {
+                    "name": "eos_account",
+                    "type": "name"
+                },
+                {
+                    "name": "amount",
+                    "type": "asset"
+                }
+            ]
+        }
+    ],
+    "actions": [
+        {
+            "name": "create",
+            "type": "create",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "linktoken",
+            "type": "linktoken",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "raw",
+            "type": "raw",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "withdraw",
+            "type": "withdraw",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [
+        {
+            "name": "account",
+            "type": "st_account",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "accountcode",
+            "type": "st_account_code",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "accountstate",
+            "type": "st_account_state",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "contract",
+            "type": "st_token_contract",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        }
+    ],
+    "ricardian_clauses": [],
+    "variants": []
+}

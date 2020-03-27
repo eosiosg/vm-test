@@ -1,0 +1,117 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.1",
+    "types": [],
+    "structs": [
+        {
+            "name": "bysec",
+            "base": "",
+            "fields": [
+                {
+                    "name": "secid",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "del",
+            "base": "",
+            "fields": [
+                {
+                    "name": "user",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "mod",
+            "base": "",
+            "fields": [
+                {
+                    "name": "user",
+                    "type": "name"
+                },
+                {
+                    "name": "n",
+                    "type": "uint32"
+                }
+            ]
+        },
+        {
+            "name": "print",
+            "base": "",
+            "fields": [
+                {
+                    "name": "user",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "set",
+            "base": "",
+            "fields": [
+                {
+                    "name": "user",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "test_table",
+            "base": "",
+            "fields": [
+                {
+                    "name": "test_primary",
+                    "type": "name"
+                },
+                {
+                    "name": "secondary",
+                    "type": "name"
+                },
+                {
+                    "name": "datum",
+                    "type": "uint64"
+                }
+            ]
+        }
+    ],
+    "actions": [
+        {
+            "name": "bysec",
+            "type": "bysec",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "del",
+            "type": "del",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "mod",
+            "type": "mod",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "print",
+            "type": "print",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "set",
+            "type": "set",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [
+        {
+            "name": "testtaba",
+            "type": "test_table",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        }
+    ],
+    "ricardian_clauses": [],
+    "variants": []
+}

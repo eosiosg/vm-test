@@ -6,8 +6,8 @@
 #include <eosio/vm/execution_context.hpp>
 #include <fstream>
 #include <gtest/gtest.h>
-#include "name.hpp"
-#include "mocked_context.hpp"
+#include "../lib/name.hpp"
+#include "../lib/mocked_context.hpp"
 
 using backend_t = eosio::vm::backend<mocked_context>;
 using rhf_t = eosio::vm::registered_host_functions<mocked_context>;
