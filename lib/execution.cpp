@@ -30,23 +30,112 @@ evmc_status_code convert_status(const string& str) {
     else throw "unknown status";
 }
 
+evmc::bytes32 hex_to_bytes32(const std::string &str) {
+    evmc_bytes32 b32;
+
+    auto bytes = hex_to_bytes(str);
+    for (auto i = 0; i < 32; i++) {
+        b32.bytes[i] = bytes[i];
+    }
+    return evmc::bytes32(b32);
+}
+
+evmc_address hex_to_evmc_address(const std::string &str) {
+    evmc_address addr;
+
+    auto bytes = hex_to_bytes(str);
+    for (auto i = 0; i < 20; i++) {
+        addr.bytes[i] = bytes[i];
+    }
+    return addr;
+}
+
+
 namespace vmtest
 {
     evmc_result execute(evmc_vm* /*unused*/, const evmc_host_interface* host, evmc_host_context* ctx,
                         evmc_revision rev, const evmc_message* msg, const uint8_t* code, size_t code_size) noexcept
     {
-        vm vm(std::string("contract/challenge/eos_evm.wasm"), "bpa"_n);
+        vm vm(std::string("eos_evm.wasm"), "bpa"_n);
 
-        string trx(code, code + code_size);
-        auto result = vm.raw(trx);
+        evmc::HostContext h{*host, ctx};
 
-        auto status_code = convert_status(result.status_code);
-        auto gas_left = stoi(result.gas_left);
+        vm.link_token({1397703940, "eosio.token"_n});
+        auto address = bytes_to_hex_str(msg->destination.bytes, 20);
+        auto caller = bytes_to_hex_str(msg->sender.bytes, 20);
+        auto origin = bytes_to_hex_str(h.get_tx_context().tx_origin.bytes, 20);
+        vm.create("bpb"_n, address);
+        vm.create("bpc"_n, caller);
+        if (origin != caller) vm.create("bpd"_n, origin);
 
-        auto output_data = result.output.data();
-        auto output_size = result.output.size();
+        try {
+
+            auto result = vm.rawtest(
+                    address,
+                    caller,
+                    bytes_to_hex_str(code, code_size),
+                    bytes_to_hex_str(msg->input_data, msg->input_size),
+                    int_to_hex(msg->gas),
+                    bytes_to_hex_str(h.get_tx_context().tx_gas_price.bytes, 32),
+                    origin,
+                    bytes_to_hex_str(msg->value.bytes, 32)
+            );
+
+            auto status_code = convert_status(result.status_code);
+            auto gas_left = hex_to_i64(result.gas_left);
+
+            std::for_each(result.output.begin(), result.output.end(), [](char &c) {
+                c = ::tolower(c);
+            });
+
+            auto output_bytes = hex_to_bytes(result.output);
 
 
-        return evmc::make_result(status_code, gas_left, (unsigned char *)output_data, output_size);
+
+
+
+//            auto addresses = vm.get_addresses();
+//            for (auto &addr: addresses) {
+                auto storage_map = vm.get_storage(address);
+                for (auto &e: storage_map) {
+
+                    h.set_storage(msg->destination, hex_to_bytes32(e.first), hex_to_bytes32(e.second));
+                }
+//            }
+
+
+            if (!result.log.empty()) {
+                std::map<std::string, std::string> ret;
+                Json::Value root;
+                JSONCPP_STRING err;
+                Json::CharReaderBuilder builder;
+                const std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
+                if (!reader->parse(result.log.c_str(), result.log.c_str() + result.log.size(), &root, &err)) {
+                    std::cout << "error" << std::endl;
+                }
+
+                if (!root.isArray()) {
+                    std::cout << "root is not an array" << std::endl;
+                } else {
+                    for (auto &e: root) {
+                        auto addr = hex_to_evmc_address(e["address"].asString());
+                        auto log_data = hex_to_bytes(e["data"].asString());
+                        auto topics = e["topics"];
+                        if (!topics.isArray()) {
+                            std::cout << "topics is not an array" << std::endl;
+                        } else {
+                            vector<evmc::bytes32> topic_bytes{};
+                            for (auto &i: topics) {
+                                topic_bytes.emplace_back(hex_to_bytes32(i.asString()));
+                            }
+                            h.emit_log(addr, log_data.data(), log_data.size(), topic_bytes.data(), topic_bytes.size());
+                        }
+                    }
+                }
+            }
+            return evmc::make_result(status_code, gas_left, output_bytes.data(), output_bytes.size());
+        } catch(eosio::vm::wasm_vector_oob_exception) {
+            return evmc::make_result(EVMC_STACK_OVERFLOW, msg->gas, nullptr, 0);
+        }
     }
 }

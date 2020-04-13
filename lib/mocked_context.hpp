@@ -5,11 +5,11 @@
 #include <openssl/ripemd.h>
 #include <utility>
 #include <sstream>
+#include <json/json.h>
 
 #include "other_fc.hpp"
 #include "serialization.hpp"
-
-using uint128_t           = unsigned __int128;
+#include "utils.hpp"
 
 using namespace std;
 typedef vector<char> obj_type;
@@ -17,7 +17,8 @@ typedef map<uint64_t, obj_type> table_type;
 typedef pair<pair<pair<eosio::name, eosio::name>, uint64_t>, obj_type*> kv_type;
 typedef vector<char> bytes;
 
-namespace eosio { namespace chain {
+namespace eosio {
+    namespace chain {
         template<typename T>
         struct array_ptr {
             explicit array_ptr(T *value) : value(value) {}
@@ -107,11 +108,13 @@ struct db_type {
 
     void print_all() {
         for (auto &it : db) {
-            cout << it.first.first.value << " " << it.first.second.value << " ";
+            cout << "<" << it.first.first.value << ", " << it.first.second.value << "> ";
             for (auto &i : it.second) {
-                cout << i.first << " " << i.second.size() << "\n";
+                cout << i.first << ": " << bytes_to_hex(i.second.data(), i.second.size()) << "\n";
             }
+            cout << endl;
         }
+        cout << endl;
     }
 };
 
@@ -188,11 +191,13 @@ struct secondary_key_type {
 
     void print_all() {
         for (auto &it : sec_indexes) {
-            cout << it.first.first << " " << it.first.second << " ";
+            cout << "<" << it.first.first.value << ", " << it.first.second.value << "> ";
             for (auto &i : it.second) {
-                cout << i.first << " " << i.second  << "\n";
+                cout << i.first << ": " << i.second << "\n";
             }
+            cout << endl;
         }
+        cout << endl;
     }
 };
 
@@ -396,15 +401,6 @@ public:
     void prints(null_terminated_ptr str) {
         string tmp(static_cast<const char*>(str));
         std::cout << tmp;
-        if (tmp.find(" print receipt as json: ") != std::string::npos) {
-            output.erase("json");
-        } else if (tmp.find("status_code :") != std::string::npos) {
-            output.erase("status_code");
-        } else if (tmp.find("output      :") != std::string::npos) {
-            output.erase("output");
-        } else if (tmp.find("gas_left    :") != std::string::npos) {
-            output.erase("gas_left");
-        }
     }
     void printui(uint64_t val) {
         std::cout << val;
@@ -421,9 +417,6 @@ public:
             str[2 * i + 1] = hexmap[data[i] & 0x0F];
         }
         std::cout << str;
-        if (output.find("output") ==  output.end()) {
-            output.emplace(pair{"output", str});
-        }
     }
 
 
@@ -431,9 +424,6 @@ public:
         std::ostringstream oss;
         oss << val;
         std::cout <<  oss.str();
-        if (output.find("gas_left") ==  output.end()) {
-            output.emplace(pair{"gas_left", oss.str()});
-        }
     }
 
     void eosio_assert(bool test, null_terminated_ptr msg) {
@@ -571,10 +561,19 @@ public:
 
     void prints_l(const char *str, uint32_t str_len ) {
         string tmp(str, str_len);
-        std::cout << tmp;
-        if (output.find("status_code") == output.end()) {
-            output.emplace(pair{"status_code", tmp});
+        std::cout << tmp << std::endl;
+        if (tmp.find("status_code") != std::string::npos
+        && tmp.find("output") != std::string::npos
+        && tmp.find("gas_left") != std::string::npos) {
+            auto m = mappify(tmp);
+            output["status_code"] = m["status_code"];
+            output["output"] = m["output"];
+            output["gas_left"] = m["gas_left"];
+            if (m.find("emit logs") != m.end()) {
+                output["log"] = m["emit logs"];
+            }
         }
+
     }
 
     uint32_t __fixunstfsi( uint64_t l, uint64_t h ) {
@@ -632,10 +631,8 @@ public:
             db.update(pair{scope, table}, table_type{});
         }
 
-//            if (db.find_row(pair{scope, table}, id) == db.table_end(pair{scope, table})) {
         db.update_row(pair{scope, table}, id, buffer, buffer_size);
 
-//            }
         auto obj = kv_type{{pair{scope, table}, id}, db.get_row(pair{scope, table}, id)};
         for (auto i = 0; i < keyval_cache.size(); ++i) {
             if (keyval_cache[i].first == pair{pair{scope, table}, id}) {
@@ -691,26 +688,22 @@ public:
     void assert_sha256(array_ptr<char> data, uint32_t datalen, unsigned char *hash_val) {
         unsigned char result[SHA256_DIGEST_LENGTH];
         sha256(data, datalen, result);
-//        result == hash_val;
     }
 
 
     void assert_sha1(array_ptr<char> data, uint32_t datalen, unsigned char *hash_val) {
         unsigned char result[SHA_DIGEST_LENGTH];
         sha1( data, datalen, result);
-//        result == hash_val;
     }
 
     void assert_sha512(array_ptr<char> data, uint32_t datalen, unsigned char *hash_val) {
         unsigned char result[SHA512_DIGEST_LENGTH];
         sha512( data, datalen, result);
-//        result == hash_val;
     }
 
     void assert_ripemd160(array_ptr<char> data, uint32_t datalen, unsigned char *hash_val) {
         unsigned char result[RIPEMD160_DIGEST_LENGTH];
         ripemd160( data, datalen, result);
-//        result == hash_val;
     }
 
     void sha1(array_ptr<char> data, uint32_t datalen, unsigned char *hash_val) {
@@ -757,7 +750,8 @@ public:
     }
 
     uint64_t current_time() {
-        return static_cast<uint64_t>(std::time(nullptr));
+//        return static_cast<uint64_t>(std::time(nullptr));
+        return 1577836805500000;
     }
 
     int get_active_producers(const char *producers, size_t buffer_size) {
@@ -770,24 +764,24 @@ public:
             return -1;
         }
 
-        if (tb->second.rbegin()->first > id) {
-            return -2;
-        }
-
+        auto found = false;
         uint64_t primary;
         for (auto& e: tb->second ) {
             if (e.first >= id) {
-                primary = id;
+                primary = e.first;
+                found = true;
                 break;
             }
         }
+
+        if (!found) return -2;
 
         for (auto i = 0; i < keyval_cache.size(); ++i) {
             if (keyval_cache[i].first == pair{pair{scope, table}, primary}) {
                 return i;
             }
         }
-        keyval_cache.emplace_back(kv_type{pair{pair{scope, table}, id}, &tb->second[id]});
+        keyval_cache.emplace_back(kv_type{pair{pair{scope, table}, primary}, &tb->second[primary]});
         return keyval_cache.size() - 1;
     }
 
@@ -797,18 +791,14 @@ public:
             return -1;
         }
 
-//        if (i256_index.find_row(pair{scope, table}, primary) == i256_index.table_end(pair{scope, table})) {
-//            return -2;
-//        }
-
         array<uint128_t, 2> secondary;
-        ::memcpy(secondary.data(), data.value, data_len);
+        copy(data.value, data.value + data_len, secondary.begin());
 
         auto found = false;
         for (auto& e :tb->second) {
             if (e.second >= secondary) {
                 primary = e.first;
-                if (e.second != secondary) ::memcpy(secondary.data(), e.second.data(), e.second.size());
+                if (e.second != secondary) copy(e.second.data(), e.second.data() + e.second.size(), secondary.begin());
                 found = true;
                 break;
             }
@@ -839,8 +829,8 @@ public:
         }
 
         array<uint128_t, 2> secondary{};
-        ::memcpy(secondary.data(), tb->second[primary].data(), data_len);
-        ::memcpy(data.value, secondary.data(), secondary.size());
+        copy(tb->second[primary].data(), tb->second[primary].data() + data_len, secondary.begin());
+        copy(secondary.data(), secondary.data() + secondary.size(), data.value);
         for (auto i = 0; i < i256_sec_keyval_cache.size(); ++i) {
             if (i256_sec_keyval_cache[i].first == pair{pair{scope, table}, primary}) {
                 return i;
@@ -854,7 +844,7 @@ public:
         if (iterator >= i256_sec_keyval_cache.size()) return;
 
         array<uint128_t, 2> secondary{};
-        ::memcpy(secondary.data(), data.value, data_len);
+        copy(data.value, data.value + data_len, secondary.begin());
         i256_index.update_row(i256_sec_keyval_cache[iterator].first.first, i256_sec_keyval_cache[iterator].first.second, secondary);
     }
 
@@ -867,7 +857,7 @@ public:
 
 
         array<uint128_t, 2> secondary{};
-        ::memcpy(secondary.data(), data.value, data_len);
+        copy(data.value, data.value + data_len, secondary.begin());
         i256_index.store_row(pair{scope, table}, secondary, id);
 
         auto obj = i256_sec_kv_type{{pair{scope, table}, id}, secondary};
@@ -1029,10 +1019,6 @@ public:
             return -1;
         }
 
-//        if (i64_index.find_row(pair{scope, table}, primary) == i64_index.table_end(pair{scope, table})) {
-//            return -2;
-//        }
-
         auto found = false;
         for (auto& e :tb->second) {
             if (e.second == secondary) {
@@ -1089,8 +1075,12 @@ public:
 
     }
 
-    int tapos_block_num() {
+    int tapos_block_prefix() {
         return 0;
+    }
+
+    int tapos_block_num() {
+        return 11;
     }
 
     eosio::name get_account() {

@@ -17,6 +17,16 @@
     ],
     "structs": [
         {
+            "name": "clearstate",
+            "base": "",
+            "fields": [
+                {
+                    "name": "scope",
+                    "type": "uint8"
+                }
+            ]
+        },
+        {
             "name": "create",
             "base": "",
             "fields": [
@@ -55,7 +65,125 @@
             ]
         },
         {
+            "name": "log",
+            "base": "",
+            "fields": [
+                {
+                    "name": "status_code",
+                    "type": "string"
+                },
+                {
+                    "name": "output",
+                    "type": "string"
+                },
+                {
+                    "name": "from",
+                    "type": "string"
+                },
+                {
+                    "name": "to",
+                    "type": "string"
+                },
+                {
+                    "name": "nonce",
+                    "type": "string"
+                },
+                {
+                    "name": "gas_price",
+                    "type": "string"
+                },
+                {
+                    "name": "gas_left",
+                    "type": "string"
+                },
+                {
+                    "name": "gas_usage",
+                    "type": "string"
+                },
+                {
+                    "name": "value",
+                    "type": "string"
+                },
+                {
+                    "name": "data",
+                    "type": "string"
+                },
+                {
+                    "name": "v",
+                    "type": "string"
+                },
+                {
+                    "name": "r",
+                    "type": "string"
+                },
+                {
+                    "name": "s",
+                    "type": "string"
+                },
+                {
+                    "name": "contract",
+                    "type": "string"
+                },
+                {
+                    "name": "eth_emit_logs",
+                    "type": "string"
+                }
+            ]
+        },
+        {
             "name": "raw",
+            "base": "",
+            "fields": [
+                {
+                    "name": "trx_code",
+                    "type": "hex_code"
+                },
+                {
+                    "name": "sender",
+                    "type": "eth_addr_160$"
+                }
+            ]
+        },
+        {
+            "name": "rawtest",
+            "base": "",
+            "fields": [
+                {
+                    "name": "address",
+                    "type": "string"
+                },
+                {
+                    "name": "caller",
+                    "type": "string"
+                },
+                {
+                    "name": "code",
+                    "type": "hex_code"
+                },
+                {
+                    "name": "data",
+                    "type": "string"
+                },
+                {
+                    "name": "gas",
+                    "type": "string"
+                },
+                {
+                    "name": "gasPrice",
+                    "type": "string"
+                },
+                {
+                    "name": "origin",
+                    "type": "string"
+                },
+                {
+                    "name": "value",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "simulate",
             "base": "",
             "fields": [
                 {
@@ -161,6 +289,11 @@
     ],
     "actions": [
         {
+            "name": "clearstate",
+            "type": "clearstate",
+            "ricardian_contract": ""
+        },
+        {
             "name": "create",
             "type": "create",
             "ricardian_contract": ""
@@ -171,8 +304,23 @@
             "ricardian_contract": ""
         },
         {
+            "name": "log",
+            "type": "log",
+            "ricardian_contract": ""
+        },
+        {
             "name": "raw",
             "type": "raw",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "rawtest",
+            "type": "rawtest",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "simulate",
+            "type": "simulate",
             "ricardian_contract": ""
         },
         {

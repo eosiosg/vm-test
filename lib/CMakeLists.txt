@@ -14,11 +14,14 @@ add_library(eosevm SHARED
         other_fc.hpp
         serialization.cpp
         serialization.hpp
+        eos_evm.wasm
         )
-target_link_libraries(eosevm PUBLIC evmc::evmc eos-vm OpenSSL::SSL secp256k1)
+
+target_link_libraries(eosevm PUBLIC evmc::evmc eos-vm OpenSSL::SSL secp256k1 jsoncpp_lib)
 target_include_directories(eosevm PUBLIC
         $<BUILD_INTERFACE:${include_dir}>$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
         )
+
 set_target_properties(
         eosevm
         PROPERTIES

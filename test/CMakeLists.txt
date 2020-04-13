@@ -30,19 +30,6 @@ add_subdirectory(${CMAKE_CURRENT_BINARY_DIR}/googletest-src
 
 file(COPY ../lib/contract DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
 
-#aux_source_directory(. DIR_LIB_SRCS)
-
-#include_directories(../secp256k1/upstream/include)
-#add_library(serialization other_fc base58 ${DIR_LIB_SRCS})
-#
-#add_executable(
-#        serialization.cpp
-#        serialization.hpp
-#        other_fc.hpp
-#        other_fc.cpp
-#        base58.hpp
-#        base58.cpp)
-
 add_executable(HelloTest hello_test.cpp)
 target_link_libraries(HelloTest gtest_main eos-vm)
 
@@ -57,7 +44,7 @@ add_executable(TokenTest eosio_token_test.cpp)
 target_link_libraries(TokenTest gtest_main eos-vm)
 
 add_executable(ChallengeTest challenge_test.cpp ../lib/serialization.cpp ../lib/other_fc.cpp ../lib/base58.cpp)
-target_link_libraries(ChallengeTest gtest_main eos-vm OpenSSL::SSL secp256k1)
+target_link_libraries(ChallengeTest gtest_main eos-vm OpenSSL::SSL secp256k1 jsoncpp_lib)
 
 
 add_executable(MultiIndexTest multi_index_test.cpp)

@@ -33,6 +33,8 @@ if(OPENSSL_FOUND)
     endif()
 endif()
 
+find_package(jsoncpp CONFIG REQUIRED)
+
 add_subdirectory(vm)
 add_subdirectory(test)
 add_subdirectory(secp256k1)
