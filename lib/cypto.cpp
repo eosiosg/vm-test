@@ -1,4 +1,4 @@
-#include "other_fc.hpp"
+#include "cypto.hpp"
 
 uint8_t from_hex( char c ) {
     if( c >= '0' && c <= '9' )
@@ -27,7 +27,7 @@ size_t from_hex( const string& hex_str, char* out_data, size_t out_data_len ) {
     return out_pos - (uint8_t*)out_data;
 }
 
-using namespace sz;
+using namespace vmtest;
 string public_key::public_key_legacy_prefix = "EOS";
 
 sha256::sha256(const string& hexString) {

@@ -9,6 +9,7 @@
 #include <openssl/sha.h>
 #include <openssl/ripemd.h>
 #include <secp256k1.h>
+
 using namespace std;
 
 size_t from_hex( const string& hex_str, char* out_data, size_t out_data_len );
@@ -18,7 +19,7 @@ constexpr size_t const_strlen(const char* str);
 int extended_nonce_function( unsigned char *nonce32, const unsigned char *msg32,
                              const unsigned char *key32, unsigned int attempt,
                              const void *data );
-namespace sz {
+namespace vmtest {
     class sha256 {
     private:
         using HashType = uint64_t[4];

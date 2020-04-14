@@ -7,18 +7,18 @@
 #include <typeinfo>
 using namespace std;
 
-#define _REGISTER(T, f1, f2) sz::Reflect::getInstance().addNode(typeid(T).hash_code(), #T, sizeof(T), f1, f2)
+#define _REGISTER(T, f1, f2) vmtest::Reflect::getInstance().addNode(typeid(T).hash_code(), #T, sizeof(T), f1, f2)
 
 #define REGISTER_CALLABLE_CLASS(ClassName, f1, f2) _REGISTER(ClassName, f1, f2)
 
 #define INNER_DEFAULT_REGISTER(T) REGISTER_CALLABLE_CLASS(T, \
-        sz::InnerSerializeFunc::DefaultSerializeFuncClass<T>::serialize, \
-        sz::InnerSerializeFunc::DefaultSerializeFuncClass<T>::deserialize)
+        vmtest::InnerSerializeFunc::DefaultSerializeFuncClass<T>::serialize, \
+        vmtest::InnerSerializeFunc::DefaultSerializeFuncClass<T>::deserialize)
 
 #define __START_REGISTER_NO_CALLABLE_CLASS(ClassName) { \
     ClassName __register__no_callable_class_xwqdqdw; \
-    vector<sz::SubNodeType> l; \
-    sz::SubNodeType sn;
+    vector<vmtest::SubNodeType> l; \
+    vmtest::SubNodeType sn;
 
 # define __CALCULATE_OFFSET_AND_ADD(obj, m) \
     sn.offset = (size_t)((char*)(&obj.m) - (char*)(&obj)); \
@@ -26,7 +26,7 @@ using namespace std;
     l.push_back(sn)
 
 #define __END_REGISTER_NO_CALLABLE_CLASS(ClassName) \
-    sz::Reflect::getInstance().addNode(typeid(ClassName).hash_code(), #ClassName, sizeof(ClassName), l); \
+    vmtest::Reflect::getInstance().addNode(typeid(ClassName).hash_code(), #ClassName, sizeof(ClassName), l); \
     }
 
 #define REGISTER_NO_CALLABLE_CLASS_1(ClassName, m) \
@@ -229,7 +229,7 @@ using namespace std;
     __CALCULATE_OFFSET_AND_ADD(__register__no_callable_class_xwqdqdw, m16); \
     __END_REGISTER_NO_CALLABLE_CLASS(ClassName)
 
-namespace sz {
+namespace vmtest {
     typedef pair<bool, size_t> (*DataSerializeFunc)(void* pDstBuffer, const void* pData, size_t bufferSize);
     typedef pair<bool, size_t> (*DataDeserializeFunc)(void* pDstData, const void* pBuffer, size_t bufferLength);
     //将len序列化到buffer中，返回消耗buffer的字节数
@@ -369,7 +369,7 @@ namespace sz {
         size_t curPos;
         size_t maxLen;
         bool __unpack(size_t hash, void* pData) {
-            auto& table = sz::Reflect::getInstance();
+            auto& table = vmtest::Reflect::getInstance();
             auto rs = table.get(hash);
             if(!rs.first) return false;
             auto node = *rs.second;

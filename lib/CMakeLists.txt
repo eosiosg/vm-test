@@ -10,12 +10,11 @@ add_library(eosevm SHARED
         base58.hpp
         check.hpp
         name.hpp
-        other_fc.cpp
-        other_fc.hpp
+        cypto.cpp
+        cypto.hpp
         serialization.cpp
         serialization.hpp
-        eos_evm.wasm
-        )
+        contract/challenge_contract.hpp)
 
 target_link_libraries(eosevm PUBLIC evmc::evmc eos-vm OpenSSL::SSL secp256k1 jsoncpp_lib)
 target_include_directories(eosevm PUBLIC

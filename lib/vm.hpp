@@ -9,9 +9,11 @@
 #include <eosio/vm/watchdog.hpp>
 #include <eosio/vm/execution_context.hpp>
 #include <fstream>
+#include <openssl/sha.h>
+
 #include "name.hpp"
 #include "mocked_context.hpp"
-#include <openssl/sha.h>
+
 
 typedef string eth_addr;
 typedef string hex_code;
@@ -108,16 +110,7 @@ struct action_result {
 
 class vm {
 public:
-    vm(const std::string &path, eosio::name account): code(account) {
-
-        std::ifstream input(path, std::ios::binary | std::ios::ate);
-        std::ifstream::pos_type pos = input.tellg();
-        std::vector<char> tmp(pos);
-        input.seekg(0, std::ios::beg);
-        input.read(&tmp[0], pos);
-
-        std::copy(tmp.begin(), tmp.end(), std::back_inserter(wasm));
-    }
+    vm(vector<uint8_t>& contract, eosio::name account): code(account), wasm(contract) {}
 
     void init_backend(backend_t& bkend) {
 
@@ -419,12 +412,12 @@ public:
             }
         }
         if (!found) {
-            cout << "no such key i256_index" << endl;
+//            cout << "no such key i256_index" << endl;
             return m;
         }
         auto tb = database.find(pair{eosio::name(pid), "accountstate"_n});
         if (tb == database.end()) {
-            cout << "no such key in db" << endl;
+//            cout << "no such key in db" << endl;
             return m;
         }
         for (auto &i: tb->second) {
@@ -436,6 +429,54 @@ public:
         return m;
     }
 
+    void set_storage(const string& dest, const pair<string, string>& value) {
+
+        string padding_sender;
+        padding_sender.resize(64);
+        char zero = '0';
+        for (auto i = 0; i < 64; i++) {
+            if (i >= 24) {
+                padding_sender[i] = dest[i - 24 + 2];
+            } else {
+                padding_sender[i] = zero;
+            }
+        }
+        auto high_sender = string(padding_sender.data(), 32);
+        auto low_sender = string(padding_sender.data()+32, 32);
+
+        array<uint128_t, 2> key256 = {hex_to_u128(high_sender), hex_to_u128(low_sender)};
+
+
+        auto i256_tb = i256_index.find(pair{code, "account"_n});
+        if (i256_tb == i256_index.end()) {
+            cout << "no such table" << endl;
+            return;
+        }
+
+        auto found = false;
+        uint64_t pid;
+        for (auto& e :i256_tb->second) {
+            if (e.second == key256) {
+                pid = e.first;
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            cout << "no such key i256_index" << endl;
+            return;
+        }
+
+        auto key_bytes = hex_to_bytes(value.first.substr(2));
+        auto value_bytes = hex_to_bytes(value.second.substr(2));
+        auto p = (uint8_t *)&pid;
+        auto data = string(p, p+8) + string(key_bytes.begin(), key_bytes.end()) + string(value_bytes.begin(), value_bytes.end());
+        array_ptr<const char> buffer{data.data()};
+        uint32_t buffer_size = data.size();
+        database.update_row(pair{eosio::name(pid), "accountstate"_n}, pid, buffer, buffer_size);
+        i256_index.store_row(pair{eosio::name(pid), "accountstate"_n}, key256, pid);
+    }
+
     void print_tables() {
         database.print_all();
         i256_index.print_all();
@@ -443,7 +484,7 @@ public:
 
 private:
     eosio::name                              code;
-    std::vector<uint8_t>                     wasm;
+    std::vector<uint8_t>&                    wasm;
     eosio::vm::wasm_allocator                wa;
     eosio::vm::watchdog                      wd{std::chrono::seconds(3000000)};
     db_type                                  database;

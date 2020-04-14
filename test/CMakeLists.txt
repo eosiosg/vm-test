@@ -43,7 +43,7 @@ target_link_libraries(VMTest gtest_main eos-vm)
 add_executable(TokenTest eosio_token_test.cpp)
 target_link_libraries(TokenTest gtest_main eos-vm)
 
-add_executable(ChallengeTest challenge_test.cpp ../lib/serialization.cpp ../lib/other_fc.cpp ../lib/base58.cpp)
+add_executable(ChallengeTest challenge_test.cpp ../lib/serialization.cpp ../lib/cypto.cpp ../lib/base58.cpp)
 target_link_libraries(ChallengeTest gtest_main eos-vm OpenSSL::SSL secp256k1 jsoncpp_lib)
 
 

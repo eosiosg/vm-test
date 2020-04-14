@@ -5,6 +5,7 @@
 #include "execution.hpp"
 #include "vm.hpp"
 #include <memory>
+#include "contract/challenge_contract.hpp"
 
 evmc_status_code convert_status(const string& str) {
     if(str == "EVMC_SUCCESS") return EVMC_SUCCESS;
@@ -31,17 +32,17 @@ evmc_status_code convert_status(const string& str) {
 }
 
 evmc::bytes32 hex_to_bytes32(const std::string &str) {
-    evmc_bytes32 b32;
+    evmc_bytes32 b32 = {};
 
     auto bytes = hex_to_bytes(str);
     for (auto i = 0; i < 32; i++) {
         b32.bytes[i] = bytes[i];
     }
-    return evmc::bytes32(b32);
+    return b32;
 }
 
 evmc_address hex_to_evmc_address(const std::string &str) {
-    evmc_address addr;
+    evmc_address addr = {};
 
     auto bytes = hex_to_bytes(str);
     for (auto i = 0; i < 20; i++) {
@@ -56,7 +57,7 @@ namespace vmtest
     evmc_result execute(evmc_vm* /*unused*/, const evmc_host_interface* host, evmc_host_context* ctx,
                         evmc_revision rev, const evmc_message* msg, const uint8_t* code, size_t code_size) noexcept
     {
-        vm vm(std::string("eos_evm.wasm"), "bpa"_n);
+        vm vm(challenge_wasm, "bpa"_n);
 
         evmc::HostContext h{*host, ctx};
 
@@ -67,6 +68,14 @@ namespace vmtest
         vm.create("bpb"_n, address);
         vm.create("bpc"_n, caller);
         if (origin != caller) vm.create("bpd"_n, origin);
+
+        auto pre_key = evmc::bytes32{};
+        auto  pre_value = h.get_storage(msg->destination, pre_key);
+        while (pre_value != evmc::bytes32{}) {
+            vm.set_storage(address, {bytes_to_hex_str(pre_key.bytes, 32), bytes_to_hex_str(pre_value.bytes, 32)});
+            pre_key = evmc::bytes32{hex_to_ui64(bytes_to_hex_str(pre_key.bytes, 32)) + 1};
+            pre_value = h.get_storage(msg->destination, pre_key);
+        }
 
         try {
 
@@ -90,18 +99,10 @@ namespace vmtest
 
             auto output_bytes = hex_to_bytes(result.output);
 
-
-
-
-
-//            auto addresses = vm.get_addresses();
-//            for (auto &addr: addresses) {
-                auto storage_map = vm.get_storage(address);
-                for (auto &e: storage_map) {
-
-                    h.set_storage(msg->destination, hex_to_bytes32(e.first), hex_to_bytes32(e.second));
-                }
-//            }
+            auto storage_map = vm.get_storage(address);
+            for (auto &e: storage_map) {
+                h.set_storage(msg->destination, hex_to_bytes32(e.first), hex_to_bytes32(e.second));
+            }
 
 
             if (!result.log.empty()) {

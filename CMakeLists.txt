@@ -17,7 +17,7 @@ project(vm_test)
 set(CMAKE_CXX_STANDARD 17)
 
 set(OPENSSL_ROOT_DIR /usr/local/Cellar/openssl@1.1/1.1.1d/)
-set(OPENSSL_LIBRARIES /usr/local/Cellar/openssl@1.1/1.1.1d/lib)
+set(OPENSSL_LIBRARIES ${OPENSSL_LIBRARIES}/lib)
 
 find_package(OpenSSL REQUIRED)
 if(OPENSSL_FOUND)

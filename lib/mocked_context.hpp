@@ -7,7 +7,7 @@
 #include <sstream>
 #include <json/json.h>
 
-#include "other_fc.hpp"
+#include "cypto.hpp"
 #include "serialization.hpp"
 #include "utils.hpp"
 
@@ -722,15 +722,15 @@ public:
         RIPEMD160( reinterpret_cast<const unsigned char *>(data.value), datalen, (unsigned char *) hash_val);
     }
 
-    int recover_key(sz::sha256& digest, array_ptr<char> sig, uint32_t siglen, array_ptr<char> pub, uint32_t publen ) {
+    int recover_key(vmtest::sha256& digest, array_ptr<char> sig, uint32_t siglen, array_ptr<char> pub, uint32_t publen ) {
         enum VType {XXX, YYY, ZZZ};
-        sz::Deserialization<sz::signature, VType> deserialization;
+        vmtest::Deserialization<vmtest::signature, VType> deserialization;
         deserialization.setBuffer(sig, siglen);
-        sz::signature s;
+        vmtest::signature s;
         VType vType;
         deserialization.unpack(s, vType);
-        auto recovered = sz::public_key(s, digest, false);
-        sz::Serialization<sz::public_key, VType> serialization;
+        auto recovered = vmtest::public_key(s, digest, false);
+        vmtest::Serialization<vmtest::public_key, VType> serialization;
         serialization.setBuffer(pub, publen);
         serialization.pack(recovered, ZZZ);
         return recovered.storage.size()+1;

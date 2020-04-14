@@ -4,7 +4,7 @@
 
 #include "serialization.hpp"
 
-namespace sz {
+namespace vmtest {
     typedef uint64_t uint64_array_4[4];
     //将len序列化到buffer中，返回消耗buffer的字节数
     size_t serializeLength(size_t len, void* buffer) {
