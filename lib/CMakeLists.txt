@@ -1,4 +1,4 @@
-include(LibraryTools)
+#include(LibraryTools)
 
 add_library(eosevm SHARED
         ${include_dir}/eosevm.h
@@ -14,9 +14,10 @@ add_library(eosevm SHARED
         cypto.hpp
         serialization.cpp
         serialization.hpp
+        utils.hpp
         contract/challenge_contract.hpp)
 
-target_link_libraries(eosevm PUBLIC evmc::evmc eos-vm OpenSSL::SSL secp256k1 jsoncpp_lib)
+target_link_libraries(eosevm PUBLIC evmc::evmc eos-vm OpenSSL::SSL secp256k1 ${JSONCPP_LIBRARIES})
 target_include_directories(eosevm PUBLIC
         $<BUILD_INTERFACE:${include_dir}>$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
         )
@@ -33,5 +34,3 @@ if(NOT SANITIZE)
 endif()
 
 set_source_files_properties(eosevm.cpp PROPERTIES COMPILE_DEFINITIONS PROJECT_VERSION="${PROJECT_VERSION}")
-
-add_standalone_library(eosevm)

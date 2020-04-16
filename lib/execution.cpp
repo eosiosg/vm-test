@@ -57,9 +57,10 @@ namespace vmtest
     evmc_result execute(evmc_vm* /*unused*/, const evmc_host_interface* host, evmc_host_context* ctx,
                         evmc_revision rev, const evmc_message* msg, const uint8_t* code, size_t code_size) noexcept
     {
-        vm vm(challenge_wasm, "bpa"_n);
-
+//        vm vm(challenge_wasm, "bpa"_n);
+        vm vm("eos_evm.wasm", "bpa"_n);
         evmc::HostContext h{*host, ctx};
+
 
         vm.link_token({1397703940, "eosio.token"_n});
         auto address = bytes_to_hex_str(msg->destination.bytes, 20);
@@ -87,7 +88,8 @@ namespace vmtest
                     int_to_hex(msg->gas),
                     bytes_to_hex_str(h.get_tx_context().tx_gas_price.bytes, 32),
                     origin,
-                    bytes_to_hex_str(msg->value.bytes, 32)
+                    bytes_to_hex_str(msg->value.bytes, 32),
+                    h.get_tx_context().block_number
             );
 
             auto status_code = convert_status(result.status_code);

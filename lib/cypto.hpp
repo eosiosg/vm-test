@@ -78,7 +78,7 @@ namespace vmtest {
 
         static pair<bool, size_t> serialize(void *pDstBuffer, const void *pData, size_t bufferSize) {
             if (bufferSize < 66) return make_pair(false, 0);
-            ((unsigned char *) pDstBuffer)[0] = 0; // 当前用的是K1,版本号写死为0
+            ((unsigned char *) pDstBuffer)[0] = 0;
             memcpy((unsigned char *) pDstBuffer + 1, ((const signature *) pData)->_data.data(), 65);
             return make_pair(true, 66);
         }

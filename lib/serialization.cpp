@@ -1,12 +1,8 @@
-//
-// Created by zwg on 19-6-6.
-//
 
 #include "serialization.hpp"
 
 namespace vmtest {
     typedef uint64_t uint64_array_4[4];
-    //将len序列化到buffer中，返回消耗buffer的字节数
     size_t serializeLength(size_t len, void* buffer) {
         uint64_t val = len;
         size_t byte = 0;
@@ -20,8 +16,6 @@ namespace vmtest {
         return byte;
     }
 
-    //解压buffer中len值，返回(len, bufferOffset)
-    //bufferOffset返回为0表示解析出错(外部传入的bufferLen和buffer中的内容不相符)
     pair<size_t, size_t> deserializeLength(const void* buffer, size_t bufferLen) {
         auto p = (uint8_t*) buffer;
         size_t offset = 0;

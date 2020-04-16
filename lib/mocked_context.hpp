@@ -5,16 +5,17 @@
 #include <openssl/ripemd.h>
 #include <utility>
 #include <sstream>
-#include <json/json.h>
 
 #include "cypto.hpp"
 #include "serialization.hpp"
 #include "utils.hpp"
 
 using namespace std;
+typedef uint64_t primary_key_type;
 typedef vector<char> obj_type;
-typedef map<uint64_t, obj_type> table_type;
-typedef pair<pair<pair<eosio::name, eosio::name>, uint64_t>, obj_type*> kv_type;
+typedef pair<eosio::name, eosio::name> table_id_type;
+typedef map<primary_key_type, obj_type> table_type;
+typedef pair<pair<table_id_type, primary_key_type>, obj_type*> kv_type;
 typedef vector<char> bytes;
 
 namespace eosio {
@@ -61,9 +62,9 @@ namespace eosio {
     }
 }
 struct db_type {
-    map<pair<eosio::name, eosio::name>, table_type> db = {};
+    map<table_id_type, table_type> db = {};
 
-    auto find(pair<eosio::name, eosio::name> table) {
+    auto find(table_id_type table) {
         return db.find(table);
     }
 
@@ -75,33 +76,42 @@ struct db_type {
         return db.begin();
     }
 
-    auto update(pair<eosio::name, eosio::name> table, table_type tab_obj) {
+    auto update(table_id_type table, table_type tab_obj) {
         db[table] = std::move(tab_obj);
     }
 
-    auto update_row(pair<eosio::name, eosio::name> table, uint64_t id, eosio::chain::array_ptr<const char> buffer, uint32_t buffer_size ) {
+    auto update_row(table_id_type table, primary_key_type id, eosio::chain::array_ptr<const char> buffer, uint32_t buffer_size ) {
 
         if (db[table].find(id) == db[table].end()) {
             db[table][id] = obj_type{};
             db[table][id].resize(buffer_size);
         }
         ::memcpy(db[table][id].data(), buffer.value, buffer_size);
-
     }
 
-    auto find_row(pair<eosio::name, eosio::name> table, uint64_t id) {
+    auto find_row(table_id_type table, primary_key_type id) {
         return db[table].find(id);
     }
 
-    auto table_end(pair<eosio::name, eosio::name> table) {
+    auto lowerbound(table_type table, primary_key_type& id) {
+        for (auto& e: table ) {
+            if (e.first >= id) {
+                id = e.first;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    auto table_end(table_id_type table) {
         return db[table].end();
     }
 
-    auto get_row(pair<eosio::name, eosio::name> table, uint64_t id) {
+    auto get_row(table_id_type table, primary_key_type id) {
         return &db[table][id];
     }
 
-    auto remove_row (pair<eosio::name, eosio::name> table, uint64_t id) {
+    auto remove_row(table_id_type table, primary_key_type id) {
         if (db[table].find(id) != db[table].end()) db[table].erase(id);
         if (db[table].empty()) db.erase(table);
     }
@@ -118,18 +128,70 @@ struct db_type {
     }
 };
 
+struct keyvalue_cache {
+public:
+    int add(kv_type obj){
+        cache.emplace_back(obj);
+        return cache.size() - 1;
+    }
+
+    int find(table_id_type table, primary_key_type id) {
+        for (auto i = 0; i < cache.size(); ++i) {
+            if (cache[i].first == pair{table, id}) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    int update(table_id_type table, primary_key_type id, kv_type obj) {
+        auto idx = find(table, id);
+        if (idx >= 0) {
+            cache[idx] = obj;
+            return idx;
+        }
+        return add(obj);
+    }
+
+    int update(int idx, kv_type obj) {
+        assert(idx < cache.size());
+        cache[idx] = obj;
+        return idx;
+    }
+
+    auto size() {
+        return cache.size();
+    }
+
+    auto get(int idx) {
+        assert(idx < cache.size());
+        return cache[idx];
+    }
+
+    void erase(int idx) {
+        assert(idx < cache.size());
+        cache.erase(cache.begin() + idx);
+    }
+
+    void reset() {
+        cache.clear();
+    }
+private:
+    vector<kv_type> cache;
+};
+
 template<typename secondary_key>
 struct secondary_key_type {
 
-    typedef vector<pair<uint64_t, secondary_key>> secondary_index_type;
-    map<pair<eosio::name, eosio::name>, secondary_index_type> sec_indexes = {};
+    typedef vector<pair<primary_key_type, secondary_key>> secondary_index_type;
+    map<table_id_type, secondary_index_type> sec_indexes = {};
 
-    function<bool(pair<uint64_t, secondary_key>, pair<uint64_t, secondary_key>)> compFunctor =
-            [](pair<uint64_t, secondary_key> elem1 ,pair<uint64_t, secondary_key> elem2) -> bool {
+    function<bool(pair<primary_key_type, secondary_key>, pair<primary_key_type, secondary_key>)> compFunctor =
+            [](pair<primary_key_type, secondary_key> elem1 ,pair<primary_key_type, secondary_key> elem2) -> bool {
                 return elem1.second < elem2.second;
             };
 
-    auto find(pair<eosio::name, eosio::name> table) {
+    auto find(table_id_type table) {
         return sec_indexes.find(table);
     }
 
@@ -141,21 +203,11 @@ struct secondary_key_type {
         return sec_indexes.begin();
     }
 
-    auto update(pair<eosio::name, eosio::name> table, secondary_index_type sec_obj) {
+    auto update(table_id_type table, secondary_index_type sec_obj) {
         sec_indexes[table] = sec_obj;
     }
 
-    void update_row(pair<eosio::name, eosio::name> table, uint64_t primary, const secondary_key& new_secondary) {
-        for (auto itr = sec_indexes[table].begin(); itr != sec_indexes[table].end(); itr++) {
-            if (itr->first == primary) {
-                itr->second = new_secondary;
-                sort(sec_indexes[table].begin(), sec_indexes[table].end(), compFunctor);
-                break;
-            }
-        }
-    }
-
-    auto store_row(pair<eosio::name, eosio::name> table, const secondary_key& secondary, uint64_t primary) {
+    auto store_row(table_id_type table, primary_key_type primary, const secondary_key& secondary) {
         for (auto itr = sec_indexes[table].begin(); itr != sec_indexes[table].end(); itr++) {
             if (itr->first == primary) {
                 itr->second = secondary;
@@ -167,7 +219,7 @@ struct secondary_key_type {
         sort(sec_indexes[table].begin(), sec_indexes[table].end(), compFunctor);
     }
 
-    auto find_row(pair<eosio::name, eosio::name> table, uint64_t primary) {
+    auto find_row(table_id_type table, primary_key_type primary) {
         for (auto itr = sec_indexes[table].begin(); itr != sec_indexes[table].end(); itr++) {
             if (itr->first == primary) {
                 return itr;
@@ -176,11 +228,42 @@ struct secondary_key_type {
         return sec_indexes[table].end();
     }
 
-    auto table_end(pair<eosio::name, eosio::name> table) {
+    auto lowerbound(secondary_index_type table, primary_key_type& id, array<uint128_t, 2>& secondary) {
+        for (auto& e :table) {
+            if (e.second >= secondary) {
+                id = e.first;
+                if (e.second != secondary) copy(e.second.begin(), e.second.end(), secondary.begin());
+                return true;
+            }
+        }
+        return false;
+    }
+
+    auto lowerbound(secondary_index_type table, primary_key_type& id, uint64_t& secondary) {
+        for (auto& e :table) {
+            if (e.second >= secondary) {
+                id = e.first;
+                if (e.second != secondary) secondary = e.second;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    auto table_end(table_id_type table) {
         return sec_indexes[table].end();
     }
 
-    auto remove_row(pair<eosio::name, eosio::name> table, uint64_t primary) {
+    auto get_row(table_id_type table, primary_key_type id) {
+        for (auto itr = sec_indexes[table].begin(); itr != sec_indexes[table].end(); itr++) {
+            if (itr->first == id) {
+                return itr->second;
+            }
+        }
+        return secondary_key{};
+    }
+
+    auto remove_row(table_id_type table, primary_key_type primary) {
         for (auto itr = sec_indexes[table].begin(); itr != sec_indexes[table].end(); itr++) {
             if (itr->first == primary) {
                 sec_indexes[table].erase(itr);
@@ -201,15 +284,64 @@ struct secondary_key_type {
     }
 };
 
-typedef pair<pair<pair<eosio::name, eosio::name>, uint64_t>, uint64_t> i64_sec_kv_type;
-typedef pair<pair<pair<eosio::name, eosio::name>, uint64_t>, array<uint128_t, 2>> i256_sec_kv_type;
+typedef pair<pair<table_id_type, primary_key_type>, uint64_t> i64_sec_kv_type;
+typedef pair<pair<table_id_type, primary_key_type>, array<uint128_t, 2>> i256_sec_kv_type;
 
-constexpr char hexmap[] = {'0', '1', '2', '3', '4', '5', '6', '7',
-                           '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+template<typename sec_kv_type>
+struct sec_keyvalue_cache {
+public:
+    int add(sec_kv_type obj){
+        cache.emplace_back(obj);
+        return cache.size() - 1;
+    }
+
+    int find(table_id_type table, primary_key_type id) {
+        for (auto i = 0; i < cache.size(); ++i) {
+            if (cache[i].first == pair{table, id}) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    int update(table_id_type table, primary_key_type id, sec_kv_type obj) {
+        auto idx = find(table, id);
+        if (idx >= 0) {
+            cache[idx] = obj;
+            return idx;
+        }
+        return add(obj);
+    }
+
+    int update(int idx, sec_kv_type obj) {
+        assert(idx < cache.size());
+        cache[idx] = obj;
+        return idx;
+    }
+
+    auto size() {
+        return cache.size();
+    }
+
+    auto get(int idx) {
+        assert(idx < cache.size());
+        return cache[idx];
+    }
+
+    void erase(int idx) {
+        assert(idx < cache.size());
+        cache.erase(cache.begin() + idx);
+    }
+
+    void reset() {
+        cache.clear();
+    }
+private:
+    vector<sec_kv_type> cache;
+};
 
 namespace eosio {
     namespace vm {
-
 
         template <> struct wasm_type_converter<uint64_t *> : linear_memory_access {
             uint64_t *from_wasm(void *val) {
@@ -360,7 +492,7 @@ namespace eosio {
 using namespace eosio::chain;
 class mocked_context {
 public:
-    mocked_context(eosio::name receiver, eosio::name account, eosio::name name, bytes action_data, db_type& db, secondary_key_type<uint64_t>&  i64_index, secondary_key_type<array<uint128_t, 2>>& i256_index, vector<kv_type>& keyval_cache, vector<i64_sec_kv_type>& i64_sec_keyval_cache, vector<i256_sec_kv_type>& i256_sec_keyval_cache, map<string, string>& output)
+    mocked_context(eosio::name receiver, eosio::name account, eosio::name name, bytes action_data, db_type& db, secondary_key_type<uint64_t>&  i64_index, secondary_key_type<array<uint128_t, 2>>& i256_index, keyvalue_cache& keyval_cache, sec_keyvalue_cache<i64_sec_kv_type>& i64_sec_keyval_cache, sec_keyvalue_cache<i256_sec_kv_type>& i256_sec_keyval_cache, map<string, string>& output, int64_t block_num = 11)
             :receiver(receiver)
             ,account(account)
             ,action_name(name)
@@ -372,10 +504,12 @@ public:
             ,i64_sec_keyval_cache(i64_sec_keyval_cache)
             ,i256_sec_keyval_cache(i256_sec_keyval_cache)
             ,output(output)
+            ,block_num(block_num)
+
     {
-        keyval_cache = {};
-        i64_sec_keyval_cache = {};
-        i256_sec_keyval_cache = {};
+        keyval_cache.reset();
+        i64_sec_keyval_cache.reset();
+        i256_sec_keyval_cache.reset();
     }
 
     char* memcpy( array_ptr<char> dest, array_ptr<const char> src, uint32_t length) {
@@ -413,8 +547,8 @@ public:
 
         string str(data_len * 2, ' ');
         for (int i = 0; i < data_len; ++i) {
-            str[2 * i]     = hexmap[(data[i] & 0xF0) >> 4];
-            str[2 * i + 1] = hexmap[data[i] & 0x0F];
+            str[2 * i]     = hex_chars[(data[i] & 0xF0) >> 4];
+            str[2 * i + 1] = hex_chars[data[i] & 0x0F];
         }
         std::cout << str;
     }
@@ -433,7 +567,7 @@ public:
     }
 
     void eosio_assert_code(bool condition, uint64_t error_code) {
-            std::cout << error_code << std::endl;
+        std::cout << error_code << std::endl;
     }
 
     void require_auth( eosio::name acc ) {
@@ -613,14 +747,10 @@ public:
         if (tb == db.end()) return -1;
 
         if (tb->second.find(id) != tb->second.end()) {
-            for (auto i = 0; i < keyval_cache.size(); ++i) {
-                if (keyval_cache[i].first == pair{pair{scope, table}, id}) {
-                    return i;
-                }
-            }
-            auto obj = kv_type{{pair{scope, table}, id}, db.get_row(pair{scope, table}, id)};
-            keyval_cache.emplace_back(obj);
-            return keyval_cache.size() - 1;
+            auto idx = keyval_cache.find(pair{scope, table}, id);
+            if (idx >= 0) return idx;
+
+            return keyval_cache.add(kv_type{{pair{scope, table}, id}, db.get_row(pair{scope, table}, id)});
         }
         return -1;
     }
@@ -633,55 +763,42 @@ public:
 
         db.update_row(pair{scope, table}, id, buffer, buffer_size);
 
-        auto obj = kv_type{{pair{scope, table}, id}, db.get_row(pair{scope, table}, id)};
-        for (auto i = 0; i < keyval_cache.size(); ++i) {
-            if (keyval_cache[i].first == pair{pair{scope, table}, id}) {
-                keyval_cache[i] = obj;
-                return i;
-            }
-        }
-
-        keyval_cache.emplace_back(obj);
-
-        return keyval_cache.size() - 1;
+        return  keyval_cache.update(pair{scope, table}, id, kv_type{{pair{scope, table}, id}, db.get_row(pair{scope, table}, id)});
     }
 
     void db_update_i64( int itr, uint64_t payer, array_ptr<const char> buffer, uint32_t buffer_size ) {
         if (itr >= keyval_cache.size()) return;
-        keyval_cache[itr].second->reserve(buffer_size);
+        auto value = keyval_cache.get(itr);
 
-        ::memcpy(keyval_cache[itr].second->data(), buffer, buffer_size);
+        db.update_row(value.first.first, value.first.second, buffer, buffer_size);
 
-        db.update_row(keyval_cache[itr].first.first, keyval_cache[itr].first.second, buffer, buffer_size);
-
+        keyval_cache.update(itr, kv_type{{value.first.first, value.first.second}, db.get_row(value.first.first, value.first.second)});
     }
 
     int db_next_i64( int itr, uint64_t* primary ) {
         if( itr < -1 || itr >= keyval_cache.size()) return -1;
-        auto table = keyval_cache[itr].first.first;
-        *primary = keyval_cache[itr].first.second + 1;
-        auto obj = kv_type{{table, *primary}, nullptr};
-        keyval_cache.emplace_back(obj);
-        return keyval_cache.size() - 1;
+        auto value = keyval_cache.get(itr);
+        *primary = value.first.second + 1;
+        return keyval_cache.add(kv_type{{value.first.first, *primary}, nullptr});
     }
 
     int db_get_i64( int itr, array_ptr<char> buffer, uint32_t buffer_size ) {
         if( itr < 0 || itr >= keyval_cache.size()) return 0;
-        auto s = (*keyval_cache[itr].second).size();
+        auto value = keyval_cache.get(itr).second;
+        auto s = value->size();
         if( buffer_size == 0 ) return s;
 
         auto copy_size = std::min( static_cast<size_t>(buffer_size), s );
-        ::memcpy( buffer.value, (*keyval_cache[itr].second).data(), copy_size );
+        ::memcpy( buffer.value, value->data(), copy_size );
 
         return copy_size;
     }
 
     void db_remove_i64( int itr ) {
         if( itr < 0 || itr >= keyval_cache.size()) return;
-        auto table = keyval_cache[itr].first.first;
-        auto id = keyval_cache[itr].first.second;
-        db.remove_row(table, id);
-        keyval_cache.erase(keyval_cache.begin() + itr);
+        auto value = keyval_cache.get(itr);
+        db.remove_row(value.first.first, value.first.second);
+        keyval_cache.erase(itr);
     }
 
 
@@ -723,16 +840,14 @@ public:
     }
 
     int recover_key(vmtest::sha256& digest, array_ptr<char> sig, uint32_t siglen, array_ptr<char> pub, uint32_t publen ) {
-        enum VType {XXX, YYY, ZZZ};
-        vmtest::Deserialization<vmtest::signature, VType> deserialization;
+        vmtest::Deserialization<vmtest::signature> deserialization;
         deserialization.setBuffer(sig, siglen);
         vmtest::signature s;
-        VType vType;
-        deserialization.unpack(s, vType);
+        deserialization.unpack(s);
         auto recovered = vmtest::public_key(s, digest, false);
-        vmtest::Serialization<vmtest::public_key, VType> serialization;
+        vmtest::Serialization<vmtest::public_key> serialization;
         serialization.setBuffer(pub, publen);
-        serialization.pack(recovered, ZZZ);
+        serialization.pack(recovered);
         return recovered.storage.size()+1;
     }
 
@@ -764,25 +879,55 @@ public:
             return -1;
         }
 
-        auto found = false;
-        uint64_t primary;
-        for (auto& e: tb->second ) {
-            if (e.first >= id) {
-                primary = e.first;
-                found = true;
-                break;
-            }
+        auto primary = id;
+
+        if (!db.lowerbound(tb->second, primary)) return -2;
+
+        auto idx = keyval_cache.find(pair{scope, table}, primary);
+        if (idx >= 0) return idx;
+
+        return keyval_cache.add(kv_type{{pair{scope, table}, primary}, &tb->second[primary]});
+    }
+
+    int db_end_i64( eosio::name code, eosio::name scope, eosio::name table ) {
+        auto tab = db.find(pair{scope, table});
+        if (tab == db.end()) return -1;
+
+        auto idx = keyval_cache.find(pair{scope, table}, tab->second.rbegin()->first);
+        if (idx >= 0) return -idx-2;
+
+        return -keyval_cache.add(kv_type{{tab->first, tab->second.rbegin()->first}, &tab->second.rbegin()->second}) - 2;
+    }
+
+    int db_previous_i64( int itr, uint64_t& primary ) {
+        auto iterator = itr;
+        if( itr < -1 ) {
+            iterator = -itr - 2;
+            auto table = keyval_cache.get(iterator).first.first;
+            auto id = db.find(table)->second.rbegin()->first;
+            primary = id;
+            auto idx = keyval_cache.find(table, primary);
+            if (idx >= 0) return idx;
+
+            return keyval_cache.add(kv_type{{table, id}, db.get_row(table, id)});
         }
 
-        if (!found) return -2;
+        auto table_key = keyval_cache.get(iterator).first;
+        auto id = table_key.second;
+        for (auto i = db.find(table_key.first)->second.begin(); i != db.find(table_key.first)->second.end(); i++) {
+            if (i->first == id) {
+                if (i == db.find(table_key.first)->second.begin()) {
+                    return -1;
+                }
+                primary = i->first;
 
-        for (auto i = 0; i < keyval_cache.size(); ++i) {
-            if (keyval_cache[i].first == pair{pair{scope, table}, primary}) {
-                return i;
+                auto idx = keyval_cache.find(table_key.first, primary);
+                if (idx >= 0) return idx;
+
+                return keyval_cache.add(kv_type{{table_key.first, primary}, db.get_row(table_key.first, primary)});
             }
         }
-        keyval_cache.emplace_back(kv_type{pair{pair{scope, table}, primary}, &tb->second[primary]});
-        return keyval_cache.size() - 1;
+        return -1;
     }
 
     int db_idx256_lowerbound(eosio::name code, eosio::name scope, eosio::name table, array_ptr<uint128_t> data, uint32_t data_len, uint64_t& primary) {
@@ -794,30 +939,17 @@ public:
         array<uint128_t, 2> secondary;
         copy(data.value, data.value + data_len, secondary.begin());
 
-        auto found = false;
-        for (auto& e :tb->second) {
-            if (e.second >= secondary) {
-                primary = e.first;
-                if (e.second != secondary) copy(e.second.data(), e.second.data() + e.second.size(), secondary.begin());
-                found = true;
-                break;
-            }
-        }
 
-        if (!found) return -2;
+        if (!i256_index.lowerbound(tb->second, primary, secondary)) return -2;
 
-        for (auto i = 0; i < i256_sec_keyval_cache.size(); ++i) {
-            if (i256_sec_keyval_cache[i].first == pair{pair{scope, table}, primary}) {
-                return i;
-            }
-        }
 
-        auto obj = i256_sec_kv_type {{pair{scope, table}, primary}, secondary};
-        i256_sec_keyval_cache.emplace_back(obj);
-        return i256_sec_keyval_cache.size() - 1;
+        auto idx = i256_sec_keyval_cache.find(pair{scope, table}, primary);
+        if (idx >= 0) return idx;
+
+        return i256_sec_keyval_cache.add(i256_sec_kv_type{{pair{scope, table}, primary},secondary});
     }
 
-    int db_idx256_find_primary(eosio::name code, eosio::name scope, eosio::name table, array_ptr<uint128_t> data, uint32_t data_len, uint64_t& primary) {
+    int db_idx256_find_primary(eosio::name code, eosio::name scope, eosio::name table, array_ptr<uint128_t> data, uint32_t data_len, uint64_t primary) {
         auto tb = db.find(pair{scope, table});
         if (tb == db.end() || db.find_row(pair{scope, table}, primary) == db.table_end(pair{scope, table})) {
             return -1;
@@ -829,23 +961,29 @@ public:
         }
 
         array<uint128_t, 2> secondary{};
-        copy(tb->second[primary].data(), tb->second[primary].data() + data_len, secondary.begin());
-        copy(secondary.data(), secondary.data() + secondary.size(), data.value);
-        for (auto i = 0; i < i256_sec_keyval_cache.size(); ++i) {
-            if (i256_sec_keyval_cache[i].first == pair{pair{scope, table}, primary}) {
-                return i;
+        for (auto & e: sec_tb->second) {
+            if (e.first == primary) {
+                copy(e.second.data(), e.second.data() + data_len, secondary.begin());
+                break;
             }
         }
-        auto obj = i256_sec_kv_type{{pair{scope, table}, primary}, secondary};
-        i256_sec_keyval_cache.emplace_back(obj);
-        return i256_sec_keyval_cache.size() - 1;
+        copy(secondary.data(), secondary.data() + secondary.size(), data.value);
+
+        auto idx = i256_sec_keyval_cache.find(pair{scope, table}, primary);
+        if (idx >= 0) return idx;
+
+        return i256_sec_keyval_cache.add(i256_sec_kv_type{{pair{scope, table}, primary},secondary});
     }
     void db_idx256_update( int iterator, uint64_t payer, array_ptr<const uint128_t> data, uint32_t data_len ) {
         if (iterator >= i256_sec_keyval_cache.size()) return;
 
+        auto value = i256_sec_keyval_cache.get(iterator).first;
+
         array<uint128_t, 2> secondary{};
         copy(data.value, data.value + data_len, secondary.begin());
-        i256_index.update_row(i256_sec_keyval_cache[iterator].first.first, i256_sec_keyval_cache[iterator].first.second, secondary);
+
+        i256_index.store_row(value.first, value.second, secondary);
+        i256_sec_keyval_cache.update(iterator, i256_sec_kv_type{{value.first, value.second}, i256_index.get_row(value.first, value.second)});
     }
 
     int db_idx256_store( eosio::name scope, eosio::name table, uint64_t payer, uint64_t id, array_ptr<const uint128_t> data, uint32_t data_len ) {
@@ -855,55 +993,36 @@ public:
             i256_index.update(pair{scope, table}, vector<pair<uint64_t, array<uint128_t, 2>>>{});
         }
 
-
         array<uint128_t, 2> secondary{};
         copy(data.value, data.value + data_len, secondary.begin());
-        i256_index.store_row(pair{scope, table}, secondary, id);
+        i256_index.store_row(pair{scope, table}, id, secondary);
 
-        auto obj = i256_sec_kv_type{{pair{scope, table}, id}, secondary};
-        if (i256_index.find_row(pair{scope, table}, id) != i256_index.table_end(pair{scope, table})) {
-            for (auto i = 0; i < i256_sec_keyval_cache.size(); ++i) {
-                if (i256_sec_keyval_cache[i].first == pair{pair{scope, table}, id}) {
-                    i256_sec_keyval_cache[i] = obj;
-                    return i;
-                }
-            }
-        }
-
-        i256_sec_keyval_cache.emplace_back(obj);
-
-        return i256_sec_keyval_cache.size() - 1;
+        return i256_sec_keyval_cache.update(pair{scope, table}, id, i256_sec_kv_type{{pair{scope, table}, id}, secondary});
     }
 
     void db_idx256_remove(int iterator) {
         if( iterator < 0 || iterator >= i256_sec_keyval_cache.size()) return;
-        auto table = i256_sec_keyval_cache[iterator].first.first;
-        auto secondary = i256_sec_keyval_cache[iterator].first.second;
-        i256_index.remove_row(table, secondary);
-        i256_sec_keyval_cache.erase(i256_sec_keyval_cache.begin() + iterator);
+        auto table = i256_sec_keyval_cache.get(iterator).first;
+        i256_index.remove_row(table.first, table.second);
+        i256_sec_keyval_cache.erase(iterator);
     };
 
     int db_idx256_next(int iterator, uint64_t& primary) {
 
         if( iterator < -1 || iterator >= i256_sec_keyval_cache.size()) return -1;
 
-        auto obj = i256_sec_keyval_cache[iterator];
-        if (i256_index.find(obj.first.first) == i256_index.end()) return -1;
-        auto itr = i256_index.find_row(obj.first.first, obj.first.second);
+        auto table = i256_sec_keyval_cache.get(iterator).first;
+        if (i256_index.find(table.first) == i256_index.end()) return -1;
+        auto itr = i256_index.find_row(table.first, table.second);
         ++itr;
-        if (itr == i256_index.find(obj.first.first)->second.end()) return -1;
+        if (itr == i256_index.find(table.first)->second.end()) return -1;
 
         primary = itr->first;
 
-        for (auto i = 0; i < i256_sec_keyval_cache.size(); ++i) {
-            if (i256_sec_keyval_cache[i].first == pair{obj.first.first, itr->first}) {
-                return i;
-            }
-        }
-        auto next_obj = i256_sec_kv_type{{obj.first.first, itr->first}, itr->second};
+        auto idx = i256_sec_keyval_cache.find(table.first, primary);
+        if (idx >= 0) return idx;
 
-        i256_sec_keyval_cache.emplace_back(next_obj);
-        return i256_sec_keyval_cache.size() - 1;
+        return i256_sec_keyval_cache.add(i256_sec_kv_type{{table.first, primary}, itr->second});
     }
 
     int db_idx64_find_primary(eosio::name code, eosio::name scope, eosio::name table, uint64_t& secondary, uint64_t primary) {
@@ -924,71 +1043,17 @@ public:
             }
         }
 
-        for (auto i = 0; i < i64_sec_keyval_cache.size(); ++i) {
-            if (i64_sec_keyval_cache[i].first == pair{pair{scope, table}, primary}) {
-                return i;
-            }
-        }
-        auto obj = i64_sec_kv_type{{pair{scope, table}, primary}, secondary};
-        i64_sec_keyval_cache.emplace_back(obj);
-        return i64_sec_keyval_cache.size() - 1;
+        auto idx = i64_sec_keyval_cache.find(pair{scope, table}, primary);
+        if (idx >= 0) return idx;
+
+        return i64_sec_keyval_cache.add(i64_sec_kv_type{{pair{scope, table}, primary}, secondary});
     }
+
     void db_idx64_update( int iterator, uint64_t payer, const uint64_t& secondary ) {
         if (iterator >= i64_sec_keyval_cache.size()) return;
+        auto value = i64_sec_keyval_cache.get(iterator).first;
 
-        i64_index.update_row(i64_sec_keyval_cache[iterator].first.first, i64_sec_keyval_cache[iterator].first.second, secondary);
-    }
-
-    int db_end_i64( eosio::name code, eosio::name scope, eosio::name table ) {
-        auto tab = db.find(pair{scope, table});
-        if (tab == db.end()) return -1;
-        for (auto i = 0; i < keyval_cache.size(); ++i) {
-            if (keyval_cache[i].first == pair{pair{scope, table}, tab->second.rbegin()->first}) {
-                return -i-2;
-            }
-        }
-        auto obj = kv_type{{tab->first, tab->second.rbegin()->first}, &tab->second.rbegin()->second};
-        keyval_cache.emplace_back(obj);
-        return -keyval_cache.size() - 1;
-    }
-
-    int db_previous_i64( int itr, uint64_t& primary ) {
-        auto iterator = itr;
-        if( itr < -1 ) {
-            iterator = -itr - 2;
-            auto table = keyval_cache[iterator].first.first;
-            auto id = db.find(table)->second.rbegin()->first;
-            primary = id;
-            for (auto i = 0; i < keyval_cache.size(); ++i) {
-                if (keyval_cache[i].first == pair{table, id}) {
-                    return i;
-                }
-            }
-            auto obj = kv_type{{table, id}, db.get_row(table, id)};
-            keyval_cache.emplace_back(obj);
-            return keyval_cache.size() - 1;
-        }
-
-        auto table = keyval_cache[iterator].first.first;
-        auto id = keyval_cache[iterator].first.second;
-        for (auto i = db.find(table)->second.begin(); i != db.find(table)->second.end(); i++) {
-            if (i->first == id) {
-                if (i == db.find(table)->second.begin()) {
-                    return -1;
-                }
-                primary = i->first;
-                for (auto j = 0; j < keyval_cache.size(); ++j) {
-                    if (keyval_cache[j].first == pair{table, i->first}) {
-                        return j;
-                    }
-                }
-                auto obj = kv_type{{table, i->first}, db.get_row(table, i->first)};
-                keyval_cache.emplace_back(obj);
-                return keyval_cache.size() - 1;
-            }
-        }
-
-        return -1;
+        i64_index.store_row(value.first, value.second, secondary);
     }
 
     int db_idx64_store( eosio::name scope, eosio::name table, uint64_t payer, uint64_t id, const uint64_t& secondary ) {
@@ -999,18 +1064,8 @@ public:
         }
 
         i64_index.store_row(pair{scope, table}, secondary, id);
-        auto obj = i64_sec_kv_type{{pair{scope, table}, id}, secondary};
-        if (i64_index.find_row(pair{scope, table}, id) != i64_index.table_end(pair{scope, table})) {
-            for (auto i = 0; i < i64_sec_keyval_cache.size(); ++i) {
-                if (i64_sec_keyval_cache[i].first == pair{pair{scope, table}, id}) {
-                    i64_sec_keyval_cache[i] = obj;
-                    return i;
-                }
-            }
-        }
 
-        i64_sec_keyval_cache.emplace_back(obj);
-        return i64_sec_keyval_cache.size() - 1;
+        return i64_sec_keyval_cache.update(pair{scope, table}, id, i64_sec_kv_type{{pair{scope, table}, id}, secondary});
     }
 
     int db_idx64_lowerbound(eosio::name code, eosio::name scope, eosio::name table,  uint64_t& secondary, uint64_t& primary) {
@@ -1019,57 +1074,37 @@ public:
             return -1;
         }
 
-        auto found = false;
-        for (auto& e :tb->second) {
-            if (e.second == secondary) {
-                primary = e.first;
-                if (e.second != secondary) secondary = e.second;
-                found = true;
-                break;
-            }
-        }
+        if (!i64_index.lowerbound(tb->second, primary, secondary)) return -2;
 
-        if (!found) return -2;
+        auto idx = i64_sec_keyval_cache.find(pair{scope, table}, primary);
+        if (idx >= 0) return idx;
 
-        for (auto i = 0; i < i64_sec_keyval_cache.size(); ++i) {
-            if (i64_sec_keyval_cache[i].first == pair{pair{scope, table}, primary}) {
-                return i;
-            }
-        }
-        auto obj = i64_sec_kv_type{{pair{scope, table}, secondary}, primary};
-        i64_sec_keyval_cache.emplace_back(obj);
-        return i64_sec_keyval_cache.size() - 1;
+        return i64_sec_keyval_cache.add(i64_sec_kv_type{{pair{scope, table}, primary}, secondary});
     }
 
     int db_idx64_next(int iterator, uint64_t& primary) {
 
         if( iterator < -1 || iterator >= i64_sec_keyval_cache.size()) return -1;
 
-        auto obj = i64_sec_keyval_cache[iterator];
-        if (i64_index.find(obj.first.first) == i64_index.end()) return -1;
-        auto itr = i64_index.find_row(obj.first.first, obj.first.second);
+        auto table = i64_sec_keyval_cache.get(iterator).first;
+        if (i64_index.find(table.first) == i64_index.end()) return -1;
+        auto itr = i64_index.find_row(table.first, table.second);
         ++itr;
-        if (itr == i64_index.find(obj.first.first)->second.end()) return -1;
+        if (itr == i64_index.find(table.first)->second.end()) return -1;
 
         primary = itr->first;
 
-        for (auto i = 0; i < i64_sec_keyval_cache.size(); ++i) {
-            if (i64_sec_keyval_cache[i].first == pair{obj.first.first, itr->first}) {
-                return i;
-            }
-        }
-        auto next_obj = i64_sec_kv_type{{obj.first.first, itr->first}, itr->second};
+        auto idx = i64_sec_keyval_cache.find(table.first, primary);
+        if (idx >= 0) return idx;
 
-        i64_sec_keyval_cache.emplace_back(next_obj);
-        return i64_sec_keyval_cache.size() - 1;
+        return i64_sec_keyval_cache.add(i64_sec_kv_type{{table.first, primary}, itr->second});
     }
 
     void db_idx64_remove(int iterator) {
         if( iterator < 0 || iterator >= i64_sec_keyval_cache.size()) return;
-        auto table = i64_sec_keyval_cache[iterator].first.first;
-        auto secondary = i64_sec_keyval_cache[iterator].first.second;
-        i64_index.remove_row(table, secondary);
-        i64_sec_keyval_cache.erase(i64_sec_keyval_cache.begin() + iterator);
+        auto value = i64_sec_keyval_cache.get(iterator).first;
+        i64_index.remove_row(value.first, value.second);
+        i64_sec_keyval_cache.erase(iterator);
     };
     void send_inline(array_ptr<char> data, uint32_t data_len) {
 
@@ -1080,7 +1115,7 @@ public:
     }
 
     int tapos_block_num() {
-        return 11;
+        return block_num;
     }
 
     eosio::name get_account() {
@@ -1096,9 +1131,9 @@ public:
     }
 
 private:
-    vector<kv_type>&                          keyval_cache;
-    vector<i64_sec_kv_type>&                  i64_sec_keyval_cache;
-    vector<i256_sec_kv_type>&                 i256_sec_keyval_cache;
+    keyvalue_cache&                           keyval_cache;
+    sec_keyvalue_cache<i64_sec_kv_type>&      i64_sec_keyval_cache;
+    sec_keyvalue_cache<i256_sec_kv_type>&     i256_sec_keyval_cache;
     db_type&                                  db;
     secondary_key_type<uint64_t>&             i64_index;
     secondary_key_type<array<uint128_t, 2>>&  i256_index;
@@ -1106,6 +1141,7 @@ private:
     eosio::name                               account;
     eosio::name                               action_name;
     bytes                                     action_data = {};
+    int64_t                                   block_num;
 public:
     map<string, string>&                      output;
 };

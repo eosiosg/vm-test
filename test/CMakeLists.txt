@@ -28,32 +28,14 @@ add_subdirectory(${CMAKE_CURRENT_BINARY_DIR}/googletest-src
         EXCLUDE_FROM_ALL)
 
 
-file(COPY ../lib/contract DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
-
-add_executable(HelloTest hello_test.cpp)
-target_link_libraries(HelloTest gtest_main eos-vm)
-
-gtest_add_tests(
-        TARGET HelloTest
-)
-
-add_executable(VMTest vm_test.cpp)
-target_link_libraries(VMTest gtest_main eos-vm)
-
-add_executable(TokenTest eosio_token_test.cpp)
-target_link_libraries(TokenTest gtest_main eos-vm)
-
-add_executable(ChallengeTest challenge_test.cpp ../lib/serialization.cpp ../lib/cypto.cpp ../lib/base58.cpp)
-target_link_libraries(ChallengeTest gtest_main eos-vm OpenSSL::SSL secp256k1 jsoncpp_lib)
+add_executable(EOSTokenTest eosio_token_test.cpp ../lib/contract/eosio_token_contract.hpp)
+target_link_libraries(EOSTokenTest gtest_main eos-vm OpenSSL::SSL secp256k1 ${JSONCPP_LIBRARIES})
 
 
-add_executable(MultiIndexTest multi_index_test.cpp)
-target_link_libraries(MultiIndexTest gtest_main eos-vm secp256k1)
-gtest_add_tests(
-        TARGET VMTest
-)
+add_executable(EOSEVMTest challenge_test.cpp
+        ../lib/base58.cpp
+        ../lib/serialization.cpp
+        ../lib/cypto.cpp
+        )
 
-#add_test(
-#        NAME EosVMTest
-#        COMMAND
-#)
+target_link_libraries(EOSEVMTest gtest_main eos-vm OpenSSL::SSL secp256k1 ${JSONCPP_LIBRARIES})

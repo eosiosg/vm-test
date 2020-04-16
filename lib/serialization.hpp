@@ -232,7 +232,7 @@ using namespace std;
 namespace vmtest {
     typedef pair<bool, size_t> (*DataSerializeFunc)(void* pDstBuffer, const void* pData, size_t bufferSize);
     typedef pair<bool, size_t> (*DataDeserializeFunc)(void* pDstData, const void* pBuffer, size_t bufferLength);
-    //将len序列化到buffer中，返回消耗buffer的字节数
+
     size_t serializeLength(size_t len, void* buffer);
     pair<size_t, size_t> deserializeLength(const void* buffer, size_t bufferLen);
 
@@ -304,7 +304,7 @@ namespace vmtest {
         size_t maxSize;
     };
 
-    template <class T, class HeaderType>
+    template <class T>
     class Serialization {
         Buffer buffer;
         bool __pack(const void*src, const size_t& hashCode) {
@@ -353,17 +353,13 @@ namespace vmtest {
             buffer.curPos = 0;
             return true;
         }
-        inline pair<bool, size_t> pack(const T& src, const HeaderType& headerCode) {
-            uint8_t code = uint8_t(headerCode); //暂不支持>127个类的情况
-//            if(buffer.maxSize < sizeof(code))
-//                return make_pair(false, 0);
-//            ((uint8_t *)buffer.buffer)[0] = code;
-//            buffer.curPos = sizeof(code);
+        inline pair<bool, size_t> pack(const T& src) {
+            uint8_t code = 0;
             return __pack_2(&src, typeid(src).hash_code());
         }
     };
 
-    template <class T, class HeaderType>
+    template <class T>
     class Deserialization {
         const char * pBuffer;
         size_t curPos;
@@ -400,11 +396,8 @@ namespace vmtest {
             maxLen = len;
             return true;
         }
-        pair<bool, size_t> unpack(T& data, HeaderType& headerCode) {
+        pair<bool, size_t> unpack(T& data) {
             auto hash = typeid(T).hash_code();
-//            memcpy(&headerCode, pBuffer, sizeof(uint8_t));
-//            memset(((char*)&headerCode) + sizeof(uint8_t), 0, sizeof(HeaderType) - sizeof(uint8_t));
-//            curPos ++;
             auto ret = make_pair(__unpack(hash, &data), curPos);
             pBuffer = nullptr;
             curPos = 0;

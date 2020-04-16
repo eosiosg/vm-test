@@ -111,16 +111,25 @@ struct action_result {
 class vm {
 public:
     vm(vector<uint8_t>& contract, eosio::name account): code(account), wasm(contract) {}
+    vm(const std::string &path, eosio::name account): code(account) {
 
+        std::ifstream input(path, std::ios::binary | std::ios::ate);
+        std::ifstream::pos_type pos = input.tellg();
+        std::vector<char> tmp(pos);
+        input.seekg(0, std::ios::beg);
+        input.read(&tmp[0], pos);
+
+        std::copy(tmp.begin(), tmp.end(), std::back_inserter(wasm));
+    }
     void init_backend(backend_t& bkend) {
 
         // Point the backend to the allocator you want it to use.
         bkend.set_wasm_allocator(&wa);
         // Resolve the host functions indices.
         output = {};
-        keyval_cache = {};
-        i64_sec_keyval_cache = {};
-        i256_sec_keyval_cache = {};
+        keyval_cache.reset();
+        i64_sec_keyval_cache.reset();
+        i256_sec_keyval_cache.reset();
 
         rhf_t::template add<mocked_context, &mocked_context::abort, eosio::vm::wasm_allocator>("env", "abort");
         rhf_t::template add<mocked_context, &mocked_context::eosio_assert, eosio::vm::wasm_allocator>("env", "eosio_assert");
@@ -267,7 +276,7 @@ public:
         return ret;
     }
 
-    action_result rawtest(const string& address, const string& caller, const hex_code& bytecode, const string& data, const string& gas, const string& gas_price, const string& origin,  const string& value) {
+    action_result rawtest(const string& address, const string& caller, const hex_code& bytecode, const string& data, const string& gas, const string& gas_price, const string& origin,  const string& value, const int64_t block_num) {
         backend_t backend(wasm);
         init_backend(backend);
 
@@ -285,7 +294,7 @@ public:
 
         mocked_context rawtest_act_ctx(code, code, "rawtest"_n, rawtest_act_data,
                                        database, i64_index, i256_index, keyval_cache, i64_sec_keyval_cache,
-                                       i256_sec_keyval_cache, output);
+                                       i256_sec_keyval_cache, output, block_num);
         auto fn = [&]() {
             backend.initialize(&rawtest_act_ctx);
             const auto &res = backend.call(
@@ -412,12 +421,10 @@ public:
             }
         }
         if (!found) {
-//            cout << "no such key i256_index" << endl;
             return m;
         }
         auto tb = database.find(pair{eosio::name(pid), "accountstate"_n});
         if (tb == database.end()) {
-//            cout << "no such key in db" << endl;
             return m;
         }
         for (auto &i: tb->second) {
@@ -474,7 +481,7 @@ public:
         array_ptr<const char> buffer{data.data()};
         uint32_t buffer_size = data.size();
         database.update_row(pair{eosio::name(pid), "accountstate"_n}, pid, buffer, buffer_size);
-        i256_index.store_row(pair{eosio::name(pid), "accountstate"_n}, key256, pid);
+        i256_index.store_row(pair{eosio::name(pid), "accountstate"_n}, pid, key256);
     }
 
     void print_tables() {
@@ -484,14 +491,14 @@ public:
 
 private:
     eosio::name                              code;
-    std::vector<uint8_t>&                    wasm;
+    std::vector<uint8_t>                     wasm{};
     eosio::vm::wasm_allocator                wa;
-    eosio::vm::watchdog                      wd{std::chrono::seconds(3000000)};
+    eosio::vm::watchdog                      wd{std::chrono::seconds(3000)};
     db_type                                  database;
     secondary_key_type<uint64_t>             i64_index;
     secondary_key_type<array<uint128_t, 2>>  i256_index;
-    vector<kv_type>                          keyval_cache;
-    vector<i64_sec_kv_type>                  i64_sec_keyval_cache;
-    vector<i256_sec_kv_type>                 i256_sec_keyval_cache;
+    keyvalue_cache                           keyval_cache;
+    sec_keyvalue_cache<i64_sec_kv_type>      i64_sec_keyval_cache;
+    sec_keyvalue_cache<i256_sec_kv_type>     i256_sec_keyval_cache;
     map<string, string>                      output;
 };

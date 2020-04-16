@@ -1,14 +1,4 @@
 cmake_minimum_required(VERSION 3.15)
-include(cmake/cable/bootstrap.cmake)
-include(CableBuildType)
-include(CableCompilerSettings)
-include(CablePackage)
-include(CableToolchains)
-include(CMakePackageConfigHelpers)
-include(GNUInstallDirs)
-
-cable_configure_toolchain(DEFAULT cxx17-pic)
-cable_set_build_type(DEFAULT Release CONFIGURATION_TYPES Release Debug)
 
 add_subdirectory(evmc)
 
@@ -33,18 +23,21 @@ if(OPENSSL_FOUND)
     endif()
 endif()
 
-set(VCPKG_ROOT_DIR /Users/vince/vcpkg)
-include(${VCPKG_ROOT_DIR}/scripts/buildsystems/vcpkg.cmake)
-find_package(jsoncpp CONFIG REQUIRED)
 
-add_subdirectory(vm)
-add_subdirectory(test)
-add_subdirectory(secp256k1)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(JSONCPP jsoncpp)
+set(JSONCPP_ROOT_DIR /usr/local/Cellar/jsoncpp/1.9.1)
+set(JSONCPP_LIBRARIES ${JSONCPP_ROOT_DIR}/lib/libjsoncpp.dylib)
+set(JSONCPP_INCLUDE_DIR ${JSONCPP_ROOT_DIR}/include)
+include_directories(${JSONCPP_INCLUDE_DIR})
+
 
 set(include_dir ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 add_subdirectory(lib)
 
-add_executable(main main.cpp)
+add_subdirectory(vm)
+add_subdirectory(test)
+add_subdirectory(secp256k1)
 
-target_link_libraries(main eos-vm)
+
