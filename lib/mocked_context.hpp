@@ -90,6 +90,7 @@ struct db_type {
     }
 
     auto find_row(table_id_type table, primary_key_type id) {
+        assert(db.find(table) != db.end());
         return db[table].find(id);
     }
 
@@ -489,13 +490,19 @@ namespace eosio {
     } // namespace vm
 } // namespace eosio
 
+struct context {
+    eosio::name  receiver;
+    eosio::name  account;
+    eosio::name  action_name;
+    int block_num = 1;
+    uint64_t timestamp = static_cast<uint64_t>(std::time(nullptr) * 1000000);
+};
+
 using namespace eosio::chain;
 class mocked_context {
 public:
-    mocked_context(eosio::name receiver, eosio::name account, eosio::name name, bytes action_data, db_type& db, secondary_key_type<uint64_t>&  i64_index, secondary_key_type<array<uint128_t, 2>>& i256_index, keyvalue_cache& keyval_cache, sec_keyvalue_cache<i64_sec_kv_type>& i64_sec_keyval_cache, sec_keyvalue_cache<i256_sec_kv_type>& i256_sec_keyval_cache, map<string, string>& output, int64_t block_num = 11)
-            :receiver(receiver)
-            ,account(account)
-            ,action_name(name)
+    mocked_context(context ctx, bytes action_data, db_type& db, secondary_key_type<uint64_t>&  i64_index, secondary_key_type<array<uint128_t, 2>>& i256_index, keyvalue_cache& keyval_cache, sec_keyvalue_cache<i64_sec_kv_type>& i64_sec_keyval_cache, sec_keyvalue_cache<i256_sec_kv_type>& i256_sec_keyval_cache, map<string, string>& output)
+            :ctx(ctx)
             ,action_data(std::move(action_data))
             ,db(db)
             ,i64_index(i64_index)
@@ -504,7 +511,6 @@ public:
             ,i64_sec_keyval_cache(i64_sec_keyval_cache)
             ,i256_sec_keyval_cache(i256_sec_keyval_cache)
             ,output(output)
-            ,block_num(block_num)
 
     {
         keyval_cache.reset();
@@ -574,7 +580,7 @@ public:
     }
 
     eosio::name current_receiver() {
-        return receiver;
+        return ctx.receiver;
     }
     void abort() {}
 
@@ -865,8 +871,7 @@ public:
     }
 
     uint64_t current_time() {
-//        return static_cast<uint64_t>(std::time(nullptr));
-        return 1577836805500000;
+        return ctx.timestamp;
     }
 
     int get_active_producers(const char *producers, size_t buffer_size) {
@@ -1115,19 +1120,19 @@ public:
     }
 
     int tapos_block_num() {
-        return block_num;
+        return ctx.block_num;
     }
 
     eosio::name get_account() {
-        return account;
+        return ctx.account;
     }
 
     eosio::name get_receiver() {
-        return receiver;
+        return ctx.receiver;
     }
 
     eosio::name get_action() {
-        return action_name;
+        return ctx.action_name;
     }
 
 private:
@@ -1137,11 +1142,8 @@ private:
     db_type&                                  db;
     secondary_key_type<uint64_t>&             i64_index;
     secondary_key_type<array<uint128_t, 2>>&  i256_index;
-    eosio::name                               receiver;
-    eosio::name                               account;
-    eosio::name                               action_name;
     bytes                                     action_data = {};
-    int64_t                                   block_num;
+    context                                   ctx;
 public:
     map<string, string>&                      output;
 };

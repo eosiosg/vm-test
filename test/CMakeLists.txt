@@ -28,8 +28,8 @@ add_subdirectory(${CMAKE_CURRENT_BINARY_DIR}/googletest-src
         EXCLUDE_FROM_ALL)
 
 
-add_executable(EOSTokenTest eosio_token_test.cpp ../lib/contract/eosio_token_contract.hpp)
-target_link_libraries(EOSTokenTest gtest_main eos-vm OpenSSL::SSL secp256k1 ${JSONCPP_LIBRARIES})
+add_executable(EOSTokenTest eosio_token_test.cpp ../lib/base58.cpp ../lib/serialization.cpp ../lib/cypto.cpp)
+target_link_libraries(EOSTokenTest gtest_main eos-vm secp256k1 ${OPENSSL_LIBRARIES} ${JSONCPP_LIBRARIES})
 
 
 add_executable(EOSEVMTest challenge_test.cpp
@@ -38,4 +38,4 @@ add_executable(EOSEVMTest challenge_test.cpp
         ../lib/cypto.cpp
         )
 
-target_link_libraries(EOSEVMTest gtest_main eos-vm OpenSSL::SSL secp256k1 ${JSONCPP_LIBRARIES})
+target_link_libraries(EOSEVMTest gtest_main eos-vm secp256k1 ${OPENSSL_LIBRARIES} ${JSONCPP_LIBRARIES})

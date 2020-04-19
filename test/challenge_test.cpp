@@ -5,11 +5,6 @@
 
 
 TEST_F(challenge_tester, basic){
-    REGISTER_CALLABLE_CLASS(vmtest::public_key, vmtest::public_key::serialize, vmtest::public_key::deserialize);
-    REGISTER_CALLABLE_CLASS(vmtest::signature, vmtest::signature::serialize, vmtest::signature::deserialize);
-    vm eosevm(challenge_wasm, contract);
-
-    eosevm.link_token({1397703940, "eosio.token"_n});
 
     eosevm.create(accountb, "aaaaaa");
     eosevm.create(accountb, "d81f4358cb8cab53d005e7f47c7ba3f5116000a6");
@@ -51,4 +46,184 @@ TEST_F(challenge_tester, basic){
     eosevm.raw("f88a048609184e72a00083027100944a40687878845ef7cfe60b5a6f2cb47627469b7780a470a0823100000000000000000000000039944247c2edf660d86d57764b58d83b8eee901426a097ee590fb039368f035b9b31ea06d8ab7461d0647fd8fd5d63f659ce4e5241dba01a9af9395bcc3183380edde0d9397ca4dd0a0dedb7136971d72c6c080301218c");
 
     EXPECT_TRUE(true);
+}
+
+TEST_F(challenge_tester, suicide0){
+    // https://github.com/ethereum/tests/blob/7497b116a019beb26215cbea4028df068dea06be/VMTests/vmSystemOperations/suicide0.json
+
+    map<string, account_type> expected_pre_state {
+            {"0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6", {"0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6", "0x152d02c7e14af6800000", "0x33ff", "0x00"}},
+            {"0xcd1722f3947def4cf144679da39c4c32bdc35681", {"0xcd1722f3947def4cf144679da39c4c32bdc35681", "0x17", "0x6000355415600957005b60203560003555", "0x00"}}
+    };
+
+    account_type expected_post_state {
+            "0xcd1722f3947def4cf144679da39c4c32bdc35681",
+            "0x152d02c7e14af6800017",
+            "0x6000355415600957005b60203560003555",
+            "0x00"};
+
+    string expected_gas_left = "0x03e6";
+    string expected_output = "0x";
+
+    eosevm.create(accountb, "0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6");
+    eosevm.create(accountb, "cd1722f3947def4cf144679da39c4c32bdc35681");
+
+    //TODO: transfer 100000000000000000000000 to 0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6
+    //TODO: transfer 23 to 0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6
+
+    for (auto& e: expected_pre_state) {
+        EXPECT_EQ(e.second, get_account(e.first));
+    }
+
+    auto result = eosevm.rawtest(
+         "0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6",
+         "0xcd1722f3947def4cf144679da39c4c32bdc35681",
+         "0x33ff",
+         "0x",
+         "0x03e8",
+         "0x5af3107a4000",
+         "0xcd1722f3947def4cf144679da39c4c32bdc35681",
+         "0x0186a0",
+         {(int)(string_to_i64("0x00")), (uint64_t) string_to_i64("0x01")}
+    );
+
+    EXPECT_EQ((int64_t)hex_to_ui64(expected_gas_left), string_to_i64(result.gas_left));
+    EXPECT_EQ(expected_output, result.output);
+    EXPECT_EQ(expected_post_state, get_account("0xcd1722f3947def4cf144679da39c4c32bdc35681"));
+}
+
+TEST_F(challenge_tester, suicideNotExistingAccount){
+    // https://github.com/ethereum/tests/blob/7497b116a019beb26215cbea4028df068dea06be/VMTests/vmSystemOperations/suicideNotExistingAccount.json
+
+    map<string, account_type> expected_pre_state {
+        {"0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6", {"0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6", "0x152d02c7e14af6800000", "0x73aa1722f3947def4cf144679da39c4c32bdc35681ff", "0x00"}},
+        {"0xcd1722f3947def4cf144679da39c4c32bdc35681", {"0xcd1722f3947def4cf144679da39c4c32bdc35681", "0x17", "0x6000355415600957005b60203560003555", "0x00"}}
+    };
+
+    map<string, account_type> expected_post_state {
+        {"0xaa1722f3947def4cf144679da39c4c32bdc35681", {"0xaa1722f3947def4cf144679da39c4c32bdc35681", "0x152d02c7e14af6800000", "0x", "0x00"}},
+        {"0xcd1722f3947def4cf144679da39c4c32bdc35681", {"0xcd1722f3947def4cf144679da39c4c32bdc35681", "0x17", "0x6000355415600957005b60203560003555", "0x00"}}
+    };
+
+    string expected_gas_left = "0x03e5";
+    string expected_output = "0x";
+
+    eosevm.create(accountb, "d81f4358cb8cab53d005e7f47c7ba3f5116000a6");
+    eosevm.create(accountb, "cd1722f2947def4cf144679da39c4c32bdc35681");
+
+    //TODO: transfer 100000000000000000000000 to 0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6
+    //TODO: transfer 23 to 0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6
+
+    for (auto& e: expected_pre_state) {
+        EXPECT_EQ(e.second, get_account(e.first));
+    }
+
+    auto result = eosevm.rawtest(
+                "0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6",
+                "0xcd1722f3947def4cf144679da39c4c32bdc35681",
+                "0x73aa1722f3947def4cf144679da39c4c32bdc35681ff",
+                "0x",
+                "0x03e8",
+                "0x5af3107a4000",
+                "0xcd1722f3947def4cf144679da39c4c32bdc35681",
+                "0x0186a0",
+                {(int)(string_to_i64("0x00")), (uint64_t) string_to_i64("0x01")}
+                );
+
+    EXPECT_EQ((int64_t)hex_to_ui64(expected_gas_left), string_to_i64(result.gas_left));
+    EXPECT_EQ(expected_output, result.output);
+    for (auto& e: expected_post_state) {
+        EXPECT_EQ(e.second, get_account(e.first));
+    }
+
+};
+
+TEST_F(challenge_tester, push32AndSuicide){
+    // https://github.com/ethereum/tests/blob/7497b116a019beb26215cbea4028df068dea06be/VMTests/vmPushDupSwapTest/push32AndSuicide.json
+
+    account_type expected_pre_state {
+            "0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6",
+            "0x152d02c7e14af6800000",
+            "0x7fff10112233445566778899aabbccddeeff00112233445566778899aabbccddeeff600355",
+            "0x00"};
+
+    account_type expected_post_state {
+            "0xbbccddeeff00112233445566778899aabbccddee",
+            "0x152d02c7e14af6800000",
+            "0x",
+            "0x00"};
+
+    string expected_gas_left = "0x01869d";
+    string expected_output = "0x";
+
+    eosevm.create(accountb, "0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6");
+    eosevm.create(accountb, "cd1722f3947def4cf144679da39c4c32bdc35681");
+
+    //TODO: transfer 100000000000000000000000 to 0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6
+//    eosevm.raw("f8ab018609184e72a00083271000944a40687878845ef7cfe60b5a6f2cb47627469b7780b844a9059cbb0000000000000000000000000f572e5295c57f15886f9b263e2f6d2d6c7b5ec600000000000000000000000000000000000000000000152d02c7e14af680000026a0d0b77737974af56f86db5f49b1aac8703798fd8b9cf97e03c5a4dc1966fa6025a0149779f6c95edda1ff1e4b91105f581a1da759dcebc8ec9fff69afc8356fa16d");
+
+    EXPECT_EQ(expected_post_state, get_account("0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6"));
+
+    auto result = eosevm.rawtest(
+            "0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6",
+            "0xcd1722f3947def4cf144679da39c4c32bdc35681",
+            "0x7fff10112233445566778899aabbccddeeff00112233445566778899aabbccddeeff600355",
+            "0x",
+            "0x0186a0",
+            "0x5af3107a4000",
+            "0xcd1722f3947def4cf144679da39c4c32bdc35681",
+            "0x0de0b6b3a7640000",
+            {(int)(string_to_i64("0x00")), (uint64_t) string_to_i64("0x01")}
+    );
+
+    EXPECT_EQ((int64_t)hex_to_ui64(expected_gas_left), string_to_i64(result.gas_left));
+    EXPECT_EQ(expected_output, result.output);
+    EXPECT_EQ(expected_post_state, get_account("0xbbccddeeff00112233445566778899aabbccddee"));
+}
+
+TEST_F(challenge_tester, suicide){
+    // https://github.com/ethereum/tests/tree/7497b116a019beb26215cbea4028df068dea06be/VMTests/vmTests
+
+    account_type expected_pre_state {
+            "0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6",
+            "0x152d02c7e14af6800000",
+            "0x33ff",
+            "0x00"};
+
+    account_type expected_post_state {
+            "0xcd1722f3947def4cf144679da39c4c32bdc35681",
+            "0x152d02c7e14af6800000",
+            "0x",
+            "0x00"};
+
+    string expected_gas_left = "0x01869e";
+    string expected_output = "0x";
+
+    eosevm.create(accountb, "0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6");
+    eosevm.create(accountb, "cd1722f3947def4cf144679da39c4c32bdc35681");
+
+    //TODO: transfer 100000000000000000000000 to 0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6
+//    eosevm.raw("f8ab018609184e72a00083271000944a40687878845ef7cfe60b5a6f2cb47627469b7780b844a9059cbb0000000000000000000000000f572e5295c57f15886f9b263e2f6d2d6c7b5ec600000000000000000000000000000000000000000000152d02c7e14af680000026a0d0b77737974af56f86db5f49b1aac8703798fd8b9cf97e03c5a4dc1966fa6025a0149779f6c95edda1ff1e4b91105f581a1da759dcebc8ec9fff69afc8356fa16d");
+
+    EXPECT_EQ(expected_post_state, get_account("0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6"));
+    auto result = eosevm.rawtest(
+            "0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6",
+            "0xcd1722f3947def4cf144679da39c4c32bdc35681",
+            "0x33ff",
+            "0x",
+            "0x0186a0",
+            "0x5af3107a4000",
+            "0xcd1722f3947def4cf144679da39c4c32bdc35681",
+            "0x0de0b6b3a7640000",
+            {(int)(string_to_i64("0x00")), (uint64_t) string_to_i64("0x01")}
+    );
+
+    EXPECT_EQ((int64_t)hex_to_ui64(expected_gas_left), string_to_i64(result.gas_left));
+    EXPECT_EQ(expected_output, result.output);
+    EXPECT_EQ(expected_post_state, get_account("0xcd1722f3947def4cf144679da39c4c32bdc35681"));
+}
+
+int main(int argc, char **argv) {
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
 }

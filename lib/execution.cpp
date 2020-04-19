@@ -51,49 +51,45 @@ evmc_address hex_to_evmc_address(const std::string &str) {
     return addr;
 }
 
-
 namespace vmtest
 {
     evmc_result execute(evmc_vm* /*unused*/, const evmc_host_interface* host, evmc_host_context* ctx,
                         evmc_revision rev, const evmc_message* msg, const uint8_t* code, size_t code_size) noexcept
     {
-//        vm vm(challenge_wasm, "bpa"_n);
-        vm vm("eos_evm.wasm", "bpa"_n);
+        vm eos_evm(challenge_wasm, "bpa"_n);
         evmc::HostContext h{*host, ctx};
 
-
-        vm.link_token({1397703940, "eosio.token"_n});
+        eos_evm.link_token({1397703940, "eosio.token"_n});
         auto address = bytes_to_hex_str(msg->destination.bytes, 20);
         auto caller = bytes_to_hex_str(msg->sender.bytes, 20);
         auto origin = bytes_to_hex_str(h.get_tx_context().tx_origin.bytes, 20);
-        vm.create("bpb"_n, address);
-        vm.create("bpc"_n, caller);
-        if (origin != caller) vm.create("bpd"_n, origin);
+        eos_evm.create("bpb"_n, address);
+        eos_evm.create("bpc"_n, caller);
+        if (origin != caller) eos_evm.create("bpd"_n, origin);
 
         auto pre_key = evmc::bytes32{};
         auto  pre_value = h.get_storage(msg->destination, pre_key);
         while (pre_value != evmc::bytes32{}) {
-            vm.set_storage(address, {bytes_to_hex_str(pre_key.bytes, 32), bytes_to_hex_str(pre_value.bytes, 32)});
+            eos_evm.set_storage(address, {bytes_to_hex_str(pre_key.bytes, 32), bytes_to_hex_str(pre_value.bytes, 32)});
             pre_key = evmc::bytes32{hex_to_ui64(bytes_to_hex_str(pre_key.bytes, 32)) + 1};
             pre_value = h.get_storage(msg->destination, pre_key);
         }
 
         try {
-
-            auto result = vm.rawtest(
-                    address,
-                    caller,
-                    bytes_to_hex_str(code, code_size),
-                    bytes_to_hex_str(msg->input_data, msg->input_size),
-                    int_to_hex(msg->gas),
-                    bytes_to_hex_str(h.get_tx_context().tx_gas_price.bytes, 32),
-                    origin,
-                    bytes_to_hex_str(msg->value.bytes, 32),
-                    h.get_tx_context().block_number
+            auto result = eos_evm.rawtest(
+                address,
+                caller,
+                bytes_to_hex_str(code, code_size),
+                bytes_to_hex_str(msg->input_data, msg->input_size),
+                int_to_hex(msg->gas),
+                bytes_to_hex_str(h.get_tx_context().tx_gas_price.bytes, 32),
+                origin,
+                bytes_to_hex_str(msg->value.bytes, 32),
+                {(int)h.get_tx_context().block_number, (uint64_t)h.get_tx_context().block_timestamp}
             );
 
             auto status_code = convert_status(result.status_code);
-            auto gas_left = hex_to_i64(result.gas_left);
+            auto gas_left = string_to_i64(result.gas_left);
 
             std::for_each(result.output.begin(), result.output.end(), [](char &c) {
                 c = ::tolower(c);
@@ -101,7 +97,7 @@ namespace vmtest
 
             auto output_bytes = hex_to_bytes(result.output);
 
-            auto storage_map = vm.get_storage(address);
+            auto storage_map = eos_evm.get_storage(address);
             for (auto &e: storage_map) {
                 h.set_storage(msg->destination, hex_to_bytes32(e.first), hex_to_bytes32(e.second));
             }
@@ -114,11 +110,11 @@ namespace vmtest
                 Json::CharReaderBuilder builder;
                 const std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
                 if (!reader->parse(result.log.c_str(), result.log.c_str() + result.log.size(), &root, &err)) {
-                    std::cout << "error" << std::endl;
+                    cerr << "pass error" << std::endl;
                 }
 
                 if (!root.isArray()) {
-                    std::cout << "root is not an array" << std::endl;
+                    cerr << "root is not an array" << std::endl;
                 } else {
                     for (auto &e: root) {
                         auto addr = hex_to_evmc_address(e["address"].asString());
@@ -137,8 +133,9 @@ namespace vmtest
                 }
             }
             return evmc::make_result(status_code, gas_left, output_bytes.data(), output_bytes.size());
-        } catch(eosio::vm::wasm_vector_oob_exception) {
-            return evmc::make_result(EVMC_STACK_OVERFLOW, msg->gas, nullptr, 0);
+        } catch(exception& ex) {
+            cerr << ex.what() << endl;
+            return evmc::make_result(EVMC_INTERNAL_ERROR, 0, nullptr, 0);
         }
     }
 }

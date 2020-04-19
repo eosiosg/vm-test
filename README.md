@@ -1,5 +1,7 @@
 # EOS_EVM Test Tool
-This a standalone evm test project, leveraging eos-vm to execute evm transactions. See [1](https://github.com/eosiosg/eos-challenge).
+## Description
+This project provides a light, standalone eos-vm testing environment, which can be used for contracts testing without deploying on a testnet.
+For now this tool is designated for the [challenge](https://github.com/eosiosg/eos-challenge), to execute evm transactions. See [1](https://eosio.devpost.com/) for more deails.
 
 ## Dependency
 ### 1. [jsconcpp](https://github.com/open-source-parsers/jsoncpp)  
@@ -33,12 +35,25 @@ cmake ..
 cmake --build . -- -j
 ```
 
-3. Run the test
-```
-test/EOSEVMTest  
-```
 
-4. Include the library in other evmc compatible test schemes
+3. Include the library in other evmc compatible test schemes:
+#### Linux:  
+```
+lib/libeosevm.so  
+```
+#### Mac OS:`
 ```
 lib/libeosevm.dylib
 ```
+example: 
+using `testeth` from [aleth](https://github.com/ethereum/aleth):
+`testeth -t VMTests -- --all --vm /path_to_build/lib/libeosevm.dylib`
+
+4. Run supplementary tests:
+```
+test/EOSEVMTest  
+
+```
+supplementary tests cover cases that require states check, which are likely to fail on some eth tests. Therefore, these cases were integrated explicitly in this project.  
+5.  Run custom eos contract tests:
+refer to `test/eosio_token_test.cpp` to write custom tests.

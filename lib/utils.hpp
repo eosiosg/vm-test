@@ -4,6 +4,7 @@
 #include <json/json.h>
 
 using uint128_t           = unsigned __int128;
+using int128_t            = __int128;
 
 std::ostream& operator<<( std::ostream& dest, uint128_t value )
 {
@@ -136,8 +137,15 @@ std::string bytes_to_hex_str(const uint8_t* val, size_t val_count)
     return "0x" + string(ret);
 }
 
-int64_t hex_to_i64(const string& str) {
+int64_t string_to_i64(const string& str) {
     int64_t value;
+    std::istringstream iss(str);
+    iss >> value;
+    return value;
+}
+
+uint64_t string_to_ui64(const string& str) {
+    uint64_t value;
     std::istringstream iss(str);
     iss >> value;
     return value;
@@ -146,6 +154,6 @@ int64_t hex_to_i64(const string& str) {
 uint64_t hex_to_ui64(const string& str) {
     uint64_t value;
     std::istringstream iss(str);
-    iss >> value;
+    iss >> std::hex >> value;
     return value;
 }

@@ -41,6 +41,17 @@ struct extended_symbol {
 struct asset {
     int64_t amount;
     uint64_t sym;
+
+    inline bool operator==(const asset& rhs) const {
+        return std::tie(amount, sym)
+               == std::tie(rhs.amount, rhs.sym);
+    }
+
+    inline asset operator-(const asset& rhs) const {
+        assert(sym == rhs.sym);
+        assert(amount >= rhs.amount);
+        return asset{amount - rhs.amount, sym};
+    }
 };
 
 struct linktoken_act {
@@ -104,8 +115,13 @@ struct withdraw_act {
 struct action_result {
     string  status_code;
     string  gas_left;
-    string  output;
+    string  output = "0x";
     string  log;
+};
+
+struct block_info {
+    int block_num;
+    uint64_t timestamp;
 };
 
 class vm {
@@ -215,7 +231,7 @@ public:
 
         auto &&link_token_data = bytes();
         link_token.pack(link_token_data);
-        mocked_context link_token_ctx(code, code, "linktoken"_n, link_token_data, database,
+        mocked_context link_token_ctx({code, code, "linktoken"_n}, link_token_data, database,
                                       i64_index, i256_index, keyval_cache, i64_sec_keyval_cache, i256_sec_keyval_cache, output);
         auto fn = [&]() {
             backend.initialize(&link_token_ctx);
@@ -236,7 +252,7 @@ public:
 
         auto &&create_acc_data = bytes();
         create_acc.pack(create_acc_data);
-        mocked_context create_acc_ctx(code, code, "create"_n, create_acc_data, database,
+        mocked_context create_acc_ctx({code, code, "create"_n}, create_acc_data, database,
                                       i64_index, i256_index, keyval_cache, i64_sec_keyval_cache, i256_sec_keyval_cache, output);
         auto fn = [&]() {
             backend.initialize(&create_acc_ctx);
@@ -257,7 +273,7 @@ public:
         raw_action.sender = sender;
         auto &&raw_act_data = bytes();
         raw_action.pack(raw_act_data);
-        mocked_context raw_act_ctx(code, code, "raw"_n, raw_act_data,
+        mocked_context raw_act_ctx({code, code, "raw"_n}, raw_act_data,
                                    database, i64_index, i256_index, keyval_cache, i64_sec_keyval_cache,
                                    i256_sec_keyval_cache, output);
         auto fn = [&]() {
@@ -276,7 +292,7 @@ public:
         return ret;
     }
 
-    action_result rawtest(const string& address, const string& caller, const hex_code& bytecode, const string& data, const string& gas, const string& gas_price, const string& origin,  const string& value, const int64_t block_num) {
+    action_result rawtest(const string& address, const string& caller, const hex_code& bytecode, const string& data, const string& gas, const string& gas_price, const string& origin,  const string& value, const block_info& bi) {
         backend_t backend(wasm);
         init_backend(backend);
 
@@ -292,9 +308,9 @@ public:
         auto &&rawtest_act_data = bytes();
         rawtest_action.pack(rawtest_act_data);
 
-        mocked_context rawtest_act_ctx(code, code, "rawtest"_n, rawtest_act_data,
+        mocked_context rawtest_act_ctx({code, code, "rawtest"_n, bi.block_num, bi.timestamp}, rawtest_act_data,
                                        database, i64_index, i256_index, keyval_cache, i64_sec_keyval_cache,
-                                       i256_sec_keyval_cache, output, block_num);
+                                       i256_sec_keyval_cache, output);
         auto fn = [&]() {
             backend.initialize(&rawtest_act_ctx);
             const auto &res = backend.call(
@@ -305,7 +321,7 @@ public:
         backend.timed_run(wd, fn);
         action_result ret;
         ret.status_code = rawtest_act_ctx.output["status_code"];
-        ret.output = rawtest_act_ctx.output["output"];
+        ret.output += rawtest_act_ctx.output["output"];
         ret.gas_left = rawtest_act_ctx.output["gas_left"];
         if (output.find("log") != output.end()) {
             ret.log = rawtest_act_ctx.output["log"];
@@ -322,7 +338,7 @@ public:
         withdraw_action.amount = amount;
         auto &&withdraw_data = bytes();
         withdraw_action.pack(withdraw_data);
-        mocked_context withdraw_ctx(code, code, "withdraw"_n, withdraw_data,
+        mocked_context withdraw_ctx({code, code, "withdraw"_n}, withdraw_data,
                                     database, i64_index, i256_index, keyval_cache, i64_sec_keyval_cache,
                                     i256_sec_keyval_cache, output);
         auto fn = [&]() {
@@ -331,6 +347,26 @@ public:
                     &withdraw_ctx, "env", "apply", withdraw_ctx.get_receiver(),
                     withdraw_ctx.get_account(),
                     withdraw_ctx.get_action());
+        };
+        backend.timed_run(wd, fn);
+    }
+
+    template<typename action_params>
+    void exec(string action_name, action_params act_params) {
+        backend_t backend(wasm);
+        init_backend(backend);
+
+        auto &&act_data = bytes();
+        act_params.pack(act_data);
+        mocked_context m_ctx({code, code, eosio::name(action_name)}, act_data,
+                             database, i64_index, i256_index, keyval_cache, i64_sec_keyval_cache,
+                             i256_sec_keyval_cache, output);
+        auto fn = [&]() {
+            backend.initialize(&m_ctx);
+            const auto &res = backend.call(
+                    &m_ctx, "env", "apply", m_ctx.get_receiver(),
+                    m_ctx.get_account(),
+                    m_ctx.get_action());
         };
         backend.timed_run(wd, fn);
     }
@@ -350,80 +386,21 @@ public:
         return ret;
     }
 
-    map<string, string> get_storage(const array<uint128_t, 2>& key256) {
-        map<string, string> m{};
-
-        auto i256_tb = i256_index.find(pair{code, "account"_n});
-        if (i256_tb == i256_index.end()) {
-            cout << "no such table" << endl;
-            return m;
-        }
-
-        auto found = false;
-        uint64_t pid;
-        for (auto& e :i256_tb->second) {
-            if (e.second == key256) {
-                pid = e.first;
-                found = true;
-                break;
-            }
-        }
-        if (!found) {
-            cout << "no such key i256_index" << endl;
-            return m;
-        }
-        auto tb = database.find(pair{eosio::name(pid), "accountstate"_n});
-        if (tb == database.end()) {
-            cout << "no such key in db" << endl;
-            return m;
-        }
-        for (auto &i: tb->second) {
-            auto str = bytes_to_hex(i.second.data(), i.second.size());
-            string key(str.data()+16, +64);
-            string value(str.data()+80, 64);
-            m[key] = value;
-        }
-        return m;
-    }
-
     map<string, string> get_storage(const string& dest) {
         map<string, string> m{};
 
-        string padding_sender;
-        padding_sender.resize(64);
-        char zero = '0';
-        for (auto i = 0; i < 64; i++) {
-            if (i >= 24) {
-                padding_sender[i] = dest[i - 24 + 2];
-            } else {
-                padding_sender[i] = zero;
-            }
-        }
-        auto high_sender = string(padding_sender.data(), 32);
-        auto low_sender = string(padding_sender.data()+32, 32);
+        auto key256 = eth_address_to_key256(dest);
 
-        array<uint128_t, 2> key256 = {hex_to_u128(high_sender), hex_to_u128(low_sender)};
+        auto pid = find_primary_by_key256(key256);
 
-
-        auto i256_tb = i256_index.find(pair{code, "account"_n});
-        if (i256_tb == i256_index.end()) {
-            cout << "no such table" << endl;
+        if (pid < 0) {
+            cout << "no such key i256_index" << endl;
             return m;
         }
 
-        auto found = false;
-        uint64_t pid;
-        for (auto& e :i256_tb->second) {
-            if (e.second == key256) {
-                pid = e.first;
-                found = true;
-                break;
-            }
-        }
-        if (!found) {
-            return m;
-        }
-        auto tb = database.find(pair{eosio::name(pid), "accountstate"_n});
+        uint64_t primary = pid;
+
+        auto tb = database.find(pair{eosio::name(primary), "accountstate"_n});
         if (tb == database.end()) {
             return m;
         }
@@ -438,12 +415,39 @@ public:
 
     void set_storage(const string& dest, const pair<string, string>& value) {
 
+        auto key256 = eth_address_to_key256(dest);
+
+        auto pid = find_primary_by_key256(key256);
+
+        if (pid < 0) {
+            cout << "no such key i256_index" << endl;
+            return;
+        }
+        uint64_t primary = pid;
+
+        auto key_bytes = hex_to_bytes(value.first.substr(2));
+        auto value_bytes = hex_to_bytes(value.second.substr(2));
+        auto p = (uint8_t *)&primary;
+        auto data = string(p, p+8) + string(key_bytes.begin(), key_bytes.end()) + string(value_bytes.begin(), value_bytes.end());
+        array_ptr<const char> buffer{data.data()};
+        uint32_t buffer_size = data.size();
+        database.update_row(pair{eosio::name(primary), "accountstate"_n}, primary, buffer, buffer_size);
+        i256_index.store_row(pair{eosio::name(primary), "accountstate"_n}, primary, key256);
+    }
+
+    string get_table_rows(eosio::name scope, eosio::name table, uint64_t primary_id) {
+        auto it = database.find_row({scope, table}, primary_id);
+        if (it == database.table_end({scope, table})) return "";
+        return bytes_to_hex(it->second.data(), it->second.size());
+    }
+
+    array<uint128_t, 2> eth_address_to_key256(const string& addr) {
         string padding_sender;
         padding_sender.resize(64);
         char zero = '0';
         for (auto i = 0; i < 64; i++) {
             if (i >= 24) {
-                padding_sender[i] = dest[i - 24 + 2];
+                padding_sender[i] = addr[i - 24 + 2];
             } else {
                 padding_sender[i] = zero;
             }
@@ -451,41 +455,26 @@ public:
         auto high_sender = string(padding_sender.data(), 32);
         auto low_sender = string(padding_sender.data()+32, 32);
 
-        array<uint128_t, 2> key256 = {hex_to_u128(high_sender), hex_to_u128(low_sender)};
+        return array<uint128_t, 2>{hex_to_u128(high_sender), hex_to_u128(low_sender)};
+    }
 
-
+    int128_t find_primary_by_key256(array<uint128_t, 2>& key) {
+        int128_t pid = -1;
         auto i256_tb = i256_index.find(pair{code, "account"_n});
-        if (i256_tb == i256_index.end()) {
-            cout << "no such table" << endl;
-            return;
-        }
-
-        auto found = false;
-        uint64_t pid;
-        for (auto& e :i256_tb->second) {
-            if (e.second == key256) {
-                pid = e.first;
-                found = true;
-                break;
+        if (i256_tb != i256_index.end()) {
+            for (auto& e :i256_tb->second) {
+                if (e.second == key) {
+                    pid = e.first;
+                    break;
+                }
             }
         }
-        if (!found) {
-            cout << "no such key i256_index" << endl;
-            return;
-        }
-
-        auto key_bytes = hex_to_bytes(value.first.substr(2));
-        auto value_bytes = hex_to_bytes(value.second.substr(2));
-        auto p = (uint8_t *)&pid;
-        auto data = string(p, p+8) + string(key_bytes.begin(), key_bytes.end()) + string(value_bytes.begin(), value_bytes.end());
-        array_ptr<const char> buffer{data.data()};
-        uint32_t buffer_size = data.size();
-        database.update_row(pair{eosio::name(pid), "accountstate"_n}, pid, buffer, buffer_size);
-        i256_index.store_row(pair{eosio::name(pid), "accountstate"_n}, pid, key256);
+        return pid;
     }
 
     void print_tables() {
         database.print_all();
+        i64_index.print_all();
         i256_index.print_all();
     }
 
@@ -493,7 +482,7 @@ private:
     eosio::name                              code;
     std::vector<uint8_t>                     wasm{};
     eosio::vm::wasm_allocator                wa;
-    eosio::vm::watchdog                      wd{std::chrono::seconds(3000)};
+    eosio::vm::watchdog                      wd{std::chrono::seconds(3000000)};
     db_type                                  database;
     secondary_key_type<uint64_t>             i64_index;
     secondary_key_type<array<uint128_t, 2>>  i256_index;
