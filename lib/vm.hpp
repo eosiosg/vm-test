@@ -115,7 +115,7 @@ struct withdraw_act {
 struct action_result {
     string  status_code;
     string  gas_left;
-    string  output = "0x";
+    string  output;
     string  log;
 };
 
