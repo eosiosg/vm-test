@@ -1,3 +1,9 @@
 [submodule "vm/eos-vm/upstream"]
 	path = vm/eos-vm/upstream
 	url = https://github.com/EOSIO/eos-vm.git
+[submodule "secp256k1/upstream"]
+	path = secp256k1/upstream
+	url = https://github.com/cryptonomex/secp256k1-zkp.git
+[submodule "evmc"]
+	path = evmc
+	url = https://github.com/ethereum/evmc

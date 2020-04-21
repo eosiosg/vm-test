@@ -4,19 +4,10 @@
  */
 #pragma once
 
-#include "check.hpp"
-
 #include <string>
 #include <string_view>
 
 namespace eosio {
-   namespace internal_use_do_not_use {
-      extern "C" {
-         __attribute__((eosio_wasm_import))
-         void printn(uint64_t);
-      }
-   }
-
    /**
     * @defgroup name
     * @ingroup core
@@ -76,7 +67,7 @@ namespace eosio {
       :value(0)
       {
          if( str.size() > 13 ) {
-            eosio::check( false, "string is too long to be a valid name" );
+//            eosio::check( false, "string is too long to be a valid name" );
          }
          if( str.empty() ) {
             return;
@@ -91,7 +82,7 @@ namespace eosio {
          if( str.size() == 13 ) {
             uint64_t v = char_to_value( str[12] );
             if( v > 0x0Full ) {
-               eosio::check(false, "thirteenth character in name cannot be a letter that comes after j");
+//               eosio::check(false, "thirteenth character in name cannot be a letter that comes after j");
             }
             value |= v;
          }
@@ -111,7 +102,7 @@ namespace eosio {
          else if( c >= 'a' && c <= 'z' )
             return (c - 'a') + 6;
          else
-            eosio::check( false, "character is not in allowed character set for names" );
+//            eosio::check( false, "character is not in allowed character set for names" );
 
          return 0; // control flow will never reach here; just added to suppress warning
       }
@@ -230,9 +221,9 @@ namespace eosio {
        *
        * @param name to be printed
        */
-      inline void print()const {
-        internal_use_do_not_use::printn(value);
-      }
+//      inline void print()const {
+//        internal_use_do_not_use::printn(value);
+//      }
 
       /// @cond INTERNAL
 

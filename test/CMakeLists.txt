@@ -28,29 +28,9 @@ add_subdirectory(${CMAKE_CURRENT_BINARY_DIR}/googletest-src
         EXCLUDE_FROM_ALL)
 
 
+add_executable(EOSTokenTest eosio_token_test.cpp ${SOURCES})
+target_link_libraries(EOSTokenTest gtest_main eos-vm secp256k1 ${OPENSSL_LIBRARIES} ${JSONCPP_LIBRARIES} )
 
-
-
-
-
-file(COPY contract DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
-
-
-add_executable(HelloTest hello_test.cpp)
-target_link_libraries(HelloTest gtest_main eos-vm)
-
-gtest_add_tests(
-        TARGET HelloTest
-)
-
-add_executable(VMTest vm_test.cpp)
-target_link_libraries(VMTest gtest_main eos-vm)
-
-gtest_add_tests(
-        TARGET VMTest
-)
-
-#add_test(
-#        NAME EosVMTest
-#        COMMAND
-#)
+add_executable(EOSEVMTest challenge_test.cpp ${SOURCES})
+target_link_libraries(EOSEVMTest gtest_main eos-vm secp256k1 ${OPENSSL_LIBRARIES} ${JSONCPP_LIBRARIES})
+install(TARGETS EOSEVMTest DESTINATION bin)
