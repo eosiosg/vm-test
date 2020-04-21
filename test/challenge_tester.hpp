@@ -2,14 +2,15 @@
 // Created by Vince on 2/3/20.
 //
 #include <gtest/gtest.h>
+#include "../lib/name.hpp"
 #include "../lib/vm.hpp"
 #include "../lib/contract/challenge_contract.hpp"
 
 struct account_type {
-    string address = "0x";
-    string balance = "0x";
-    string code = "0x";
-    string nonce = "0x";
+    string address;
+    string balance;
+    string code;
+    string nonce;
 
     inline bool operator==(const account_type& rhs) const
     {
@@ -17,6 +18,12 @@ struct account_type {
         == std::tie(rhs.address, rhs.balance, rhs.code, rhs.nonce);
     }
 };
+
+void trim_hex_string(string& hex_str) {
+    hex_str.erase(0, min(hex_str.find_first_not_of('0'), hex_str.size()-1));
+    if (hex_str.size() % 2 != 0) hex_str = "0" + hex_str;
+    hex_str = "0x" + hex_str;
+}
 
 class challenge_tester : public testing::Test {
 public:
@@ -34,12 +41,18 @@ public:
     account_type get_account(const string& addr) {
         account_type ret;
         auto key = eosevm.eth_address_to_key256(addr);
-        auto value = eosevm.get_table_rows(contract, "account"_n, eosevm.find_primary_by_key256(key));
+        auto value = eosevm.get_table_rows(contract, "account"_n, eosevm.find_primary_by_key256(key, "account"_n));
         if (!value.empty()) {
-            ret.address += string(value.data() + 16, value.data() + 56);
-            ret.nonce += string(value.data() + 56, value.data() + 120);
-            ret.balance += string(value.data() + 120, value.data() + 184);
+            ret.address = string(value.data() + 16, value.data() + 56);
+            ret.nonce = string(value.data() + 56, value.data() + 120);
+            ret.balance = string(value.data() + 120, value.data() + 184);
         }
+        trim_hex_string(ret.address);
+        trim_hex_string(ret.nonce);
+        trim_hex_string(ret.balance);
+        auto code = eosevm.get_table_rows(contract, "accountcode"_n, eosevm.find_primary_by_key256(key, "accountcode"_n));
+        if (!code.empty()) ret.code = code.substr(60);
+        trim_hex_string(ret.code);
         return ret;
     }
 };

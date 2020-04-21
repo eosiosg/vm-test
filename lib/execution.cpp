@@ -102,7 +102,6 @@ namespace vmtest
                 h.set_storage(msg->destination, hex_to_bytes32(e.first), hex_to_bytes32(e.second));
             }
 
-
             if (!result.log.empty()) {
                 std::map<std::string, std::string> ret;
                 Json::Value root;
@@ -111,10 +110,12 @@ namespace vmtest
                 const std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
                 if (!reader->parse(result.log.c_str(), result.log.c_str() + result.log.size(), &root, &err)) {
                     cerr << "pass error" << std::endl;
+                    throw;
                 }
 
                 if (!root.isArray()) {
                     cerr << "root is not an array" << std::endl;
+                    throw;
                 } else {
                     for (auto &e: root) {
                         auto addr = hex_to_evmc_address(e["address"].asString());

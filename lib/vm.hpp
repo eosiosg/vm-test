@@ -219,6 +219,9 @@ public:
         rhf_t::template add<mocked_context, &mocked_context::db_idx256_next, eosio::vm::wasm_allocator>("env", "db_idx256_next");
         rhf_t::template add<mocked_context, &mocked_context::db_idx64_remove, eosio::vm::wasm_allocator>("env", "db_idx64_remove");
         rhf_t::template add<mocked_context, &mocked_context::db_idx64_lowerbound, eosio::vm::wasm_allocator>("env", "db_idx64_lowerbound");
+        rhf_t::template add<mocked_context, &mocked_context::is_account, eosio::vm::wasm_allocator>("env", "is_account");
+        rhf_t::template add<mocked_context, &mocked_context::require_recipient, eosio::vm::wasm_allocator>("env", "require_recipient");
+        rhf_t::template add<mocked_context, &mocked_context::has_auth, eosio::vm::wasm_allocator>("env", "has_auth");
 
         rhf_t::resolve(bkend.get_module());
     };
@@ -391,7 +394,7 @@ public:
 
         auto key256 = eth_address_to_key256(dest);
 
-        auto pid = find_primary_by_key256(key256);
+        auto pid = find_primary_by_key256(key256, "account"_n);
 
         if (pid < 0) {
             cout << "no such key i256_index" << endl;
@@ -417,7 +420,7 @@ public:
 
         auto key256 = eth_address_to_key256(dest);
 
-        auto pid = find_primary_by_key256(key256);
+        auto pid = find_primary_by_key256(key256, "account"_n);
 
         if (pid < 0) {
             cout << "no such key i256_index" << endl;
@@ -436,6 +439,8 @@ public:
     }
 
     string get_table_rows(eosio::name scope, eosio::name table, uint64_t primary_id) {
+        auto tb = database.find({scope, table});
+        if (tb == database.end()) return "";
         auto it = database.find_row({scope, table}, primary_id);
         if (it == database.table_end({scope, table})) return "";
         return bytes_to_hex(it->second.data(), it->second.size());
@@ -458,9 +463,9 @@ public:
         return array<uint128_t, 2>{hex_to_u128(high_sender), hex_to_u128(low_sender)};
     }
 
-    int128_t find_primary_by_key256(array<uint128_t, 2>& key) {
+    int128_t find_primary_by_key256(array<uint128_t, 2>& key, eosio::name table_name) {
         int128_t pid = -1;
-        auto i256_tb = i256_index.find(pair{code, "account"_n});
+        auto i256_tb = i256_index.find(pair{code, table_name});
         if (i256_tb != i256_index.end()) {
             for (auto& e :i256_tb->second) {
                 if (e.second == key) {
@@ -470,6 +475,113 @@ public:
             }
         }
         return pid;
+    }
+
+    void set_code(const string& dest, const string& code_string) {
+        auto key256 = eth_address_to_key256(dest);
+        auto pid = find_primary_by_key256(key256, "accountcode"_n);
+        auto code_hex = code_string.substr(2);
+        uint64_t primary = 0;
+        if (pid < 0) {
+            auto data_bytes = hex_to_bytes(code_hex);
+            auto dest_bytes = hex_to_bytes(dest.substr(2));
+            auto p = (uint8_t *)&primary;
+            auto code_size = data_bytes.size();
+            auto c = (uint8_t *)&code_size;
+            auto byte_string = string(p, p+8) + string(dest_bytes.begin(), dest_bytes.end()) + string(c, c+4) + string(data_bytes.begin(), data_bytes.end());
+            if (database.find(pair{eosio::name(code), "accountcode"_n}) == database.end()) {
+                database.update(pair{eosio::name(code), "accountcode"_n}, {});
+                i256_index.update(pair{eosio::name(code), "accountcode"_n}, {});
+                primary = 0;
+            } else primary = database.find(pair{eosio::name(code), "accountcode"_n})->second.size();
+
+            array_ptr<const char> buffer{byte_string.data()};
+            uint32_t buffer_size = byte_string.size();
+            database.update_row(pair{eosio::name(code), "accountcode"_n}, primary, buffer, buffer_size);
+            i256_index.store_row(pair{eosio::name(code), "accountcode"_n}, primary, key256);
+            return;
+        }
+
+        primary = pid;
+
+        auto data = *(database.get_row(pair{code, "accountcode"_n}, primary));
+        auto data_string = bytes_to_hex(data.data(), data.size());
+        auto code_size = code_hex.size() / 2;
+        auto c = (uint8_t *)&code_size;
+        for (auto i = 0; i < code_hex.size(); i++) {
+            data_string[i + 60] = code_hex[i];
+        }
+        auto new_data_bytes = hex_to_bytes(data_string);
+        auto byte_string = string(new_data_bytes.begin(), new_data_bytes.end());
+        byte_string.replace(56, 4, string(c, c+4)); //update size
+        array_ptr<const char> buffer{byte_string.data()};
+        uint32_t buffer_size = byte_string.size();
+        database.update_row(pair{eosio::name(code), "accountcode"_n}, primary, buffer, buffer_size);
+    }
+
+    void set_balance(const string& dest, const string& amount) {
+        auto key256 = eth_address_to_key256(dest);
+
+        auto pid = find_primary_by_key256(key256, "account"_n);
+
+        if (pid < 0) {
+            cout << "no such key i256_index" << endl;
+            return;
+        }
+        uint64_t primary = pid;
+
+        string hex_amount = amount.substr(2);
+        if (hex_amount.size() < 64) {
+            char tmp[65] = "0000000000000000000000000000000000000000000000000000000000000000";
+            for (auto i = 0; i < hex_amount.size(); i++) {
+                tmp[64- hex_amount.size() + i]  = hex_amount[i];
+            }
+            hex_amount = string(tmp);
+        }
+        auto data = *(database.get_row(pair{code, "account"_n}, primary));
+        auto data_string = bytes_to_hex(data.data(), data.size());
+        for (auto i = 0; i < hex_amount.size(); i++) {
+            data_string[i + 120] = hex_amount[i];
+        }
+        auto new_data_bytes = hex_to_bytes(data_string);
+        auto byte_string = string(new_data_bytes.begin(), new_data_bytes.end());
+
+        array_ptr<const char> buffer{byte_string.data()};
+        uint32_t buffer_size = byte_string.size();
+        database.update_row(pair{eosio::name(code), "account"_n}, primary, buffer, buffer_size);
+    }
+
+    void set_nonce(const string& dest, const string& value) {
+        auto key256 = eth_address_to_key256(dest);
+
+        auto pid = find_primary_by_key256(key256, "account"_n);
+
+        if (pid < 0) {
+            cout << "no such key i256_index" << endl;
+            return;
+        }
+        uint64_t primary = pid;
+
+        string hex_value = value.substr(2);
+        if (hex_value.size() < 64) {
+            char tmp[65] = "0000000000000000000000000000000000000000000000000000000000000000";
+            for (auto i = 0; i < hex_value.size(); i++) {
+                tmp[64 - hex_value.size() + i]  = hex_value[i];
+            }
+            hex_value = string(tmp);
+        }
+        auto data = *(database.get_row(pair{code, "account"_n}, primary));
+        auto data_string = bytes_to_hex(data.data(), data.size());
+        for (auto i = 0; i < hex_value.size(); i++) {
+            data_string[i + 56] = hex_value[i];
+        }
+
+        auto new_data_bytes = hex_to_bytes(data_string);
+        auto byte_string = string(new_data_bytes.begin(), new_data_bytes.end());
+
+        array_ptr<const char> buffer{byte_string.data()};
+        uint32_t buffer_size = byte_string.size();
+        database.update_row(pair{eosio::name(code), "account"_n}, primary, buffer, buffer_size);
     }
 
     void print_tables() {
@@ -484,8 +596,8 @@ private:
     eosio::vm::wasm_allocator                wa;
     eosio::vm::watchdog                      wd{std::chrono::seconds(3000000)};
     db_type                                  database;
-    secondary_key_type<uint64_t>             i64_index;
-    secondary_key_type<array<uint128_t, 2>>  i256_index;
+    secondary_db_type<uint64_t>             i64_index;
+    secondary_db_type<array<uint128_t, 2>>  i256_index;
     keyvalue_cache                           keyval_cache;
     sec_keyvalue_cache<i64_sec_kv_type>      i64_sec_keyval_cache;
     sec_keyvalue_cache<i256_sec_kv_type>     i256_sec_keyval_cache;

@@ -9,7 +9,6 @@ TEST_F(challenge_tester, basic){
     eosevm.create(accountb, "aaaaaa");
     eosevm.create(accountb, "d81f4358cb8cab53d005e7f47c7ba3f5116000a6");
     eosevm.create(accountb, "cd1722f2947def4cf144679da39c4c32bdc35681");
-    eosevm.create(accountb, "cd1722f2947def4cf144679da39c4c32bdc35681");
     eosevm.create(accountb, "0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6");
 
     eosevm.create(accountc, "aaaaaa");
@@ -68,8 +67,14 @@ TEST_F(challenge_tester, suicide0){
     eosevm.create(accountb, "0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6");
     eosevm.create(accountb, "cd1722f3947def4cf144679da39c4c32bdc35681");
 
-    //TODO: transfer 100000000000000000000000 to 0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6
-    //TODO: transfer 23 to 0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6
+    //set pre state for 0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6
+    eosevm.set_balance("0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6", "0x152d02c7e14af6800000");
+    eosevm.set_nonce("0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6", "0x00");
+    eosevm.set_code("0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6", "0x33ff" );
+    //set pre for state 0xcd1722f3947def4cf144679da39c4c32bdc35681
+    eosevm.set_balance("0xcd1722f3947def4cf144679da39c4c32bdc35681", "0x17" );
+    eosevm.set_nonce("0xcd1722f3947def4cf144679da39c4c32bdc35681", "0x00" );
+    eosevm.set_code("0xcd1722f3947def4cf144679da39c4c32bdc35681", "0x6000355415600957005b60203560003555" );
 
     for (auto& e: expected_pre_state) {
         EXPECT_EQ(e.second, get_account(e.first));
@@ -108,31 +113,38 @@ TEST_F(challenge_tester, suicideNotExistingAccount){
     string expected_gas_left = "0x03e5";
     string expected_output = "0x";
 
-    eosevm.create(accountb, "d81f4358cb8cab53d005e7f47c7ba3f5116000a6");
-    eosevm.create(accountb, "cd1722f2947def4cf144679da39c4c32bdc35681");
+    eosevm.create(accountb, "0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6");
+    eosevm.create(accountb, "cd1722f3947def4cf144679da39c4c32bdc35681");
 
-    //TODO: transfer 100000000000000000000000 to 0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6
-    //TODO: transfer 23 to 0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6
+    //set pre state for 0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6
+    eosevm.set_balance("0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6", "0x152d02c7e14af6800000");
+    eosevm.set_nonce("0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6", "0x00" );
+    eosevm.set_code("0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6", "0x73aa1722f3947def4cf144679da39c4c32bdc35681ff" );
+    //set pre for state 0xcd1722f3947def4cf144679da39c4c32bdc35681
+    eosevm.set_balance("0xcd1722f3947def4cf144679da39c4c32bdc35681", "0x17");
+    eosevm.set_nonce("0xcd1722f3947def4cf144679da39c4c32bdc35681", "0x00");
+    eosevm.set_code("0xcd1722f3947def4cf144679da39c4c32bdc35681", "0x6000355415600957005b60203560003555" );
 
     for (auto& e: expected_pre_state) {
         EXPECT_EQ(e.second, get_account(e.first));
     }
 
     auto result = eosevm.rawtest(
-                "0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6",
-                "0xcd1722f3947def4cf144679da39c4c32bdc35681",
-                "0x73aa1722f3947def4cf144679da39c4c32bdc35681ff",
-                "0x",
-                "0x03e8",
-                "0x5af3107a4000",
-                "0xcd1722f3947def4cf144679da39c4c32bdc35681",
-                "0x0186a0",
-                {(int)(string_to_i64("0x00")), (uint64_t) string_to_i64("0x01")}
-                );
+            "0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6",
+            "0xcd1722f3947def4cf144679da39c4c32bdc35681",
+            "0x73aa1722f3947def4cf144679da39c4c32bdc35681ff",
+            "0x",
+            "0x03e8",
+            "0x5af3107a4000",
+            "0xcd1722f3947def4cf144679da39c4c32bdc35681",
+            "0x0186a0",
+            {(int)(string_to_i64("0x00")), (uint64_t) string_to_i64("0x01")}
+            );
 
     EXPECT_EQ((int64_t)hex_to_ui64(expected_gas_left), string_to_i64(result.gas_left));
     EXPECT_EQ(expected_output, result.output);
     for (auto& e: expected_post_state) {
+        eosevm.set_nonce(e.first, "0x00" );
         EXPECT_EQ(e.second, get_account(e.first));
     }
 
@@ -159,10 +171,12 @@ TEST_F(challenge_tester, push32AndSuicide){
     eosevm.create(accountb, "0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6");
     eosevm.create(accountb, "cd1722f3947def4cf144679da39c4c32bdc35681");
 
-    //TODO: transfer 100000000000000000000000 to 0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6
-//    eosevm.raw("f8ab018609184e72a00083271000944a40687878845ef7cfe60b5a6f2cb47627469b7780b844a9059cbb0000000000000000000000000f572e5295c57f15886f9b263e2f6d2d6c7b5ec600000000000000000000000000000000000000000000152d02c7e14af680000026a0d0b77737974af56f86db5f49b1aac8703798fd8b9cf97e03c5a4dc1966fa6025a0149779f6c95edda1ff1e4b91105f581a1da759dcebc8ec9fff69afc8356fa16d");
+    //set pre state for 0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6
+    eosevm.set_balance("0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6", "0x152d02c7e14af6800000" );
+    eosevm.set_nonce("0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6", "0x00" );
+    eosevm.set_code("0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6", "0x7fff10112233445566778899aabbccddeeff00112233445566778899aabbccddeeff600355");
 
-    EXPECT_EQ(expected_post_state, get_account("0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6"));
+    EXPECT_EQ(expected_pre_state, get_account("0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6"));
 
     auto result = eosevm.rawtest(
             "0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6",
@@ -178,6 +192,7 @@ TEST_F(challenge_tester, push32AndSuicide){
 
     EXPECT_EQ((int64_t)hex_to_ui64(expected_gas_left), string_to_i64(result.gas_left));
     EXPECT_EQ(expected_output, result.output);
+    eosevm.set_nonce("0xbbccddeeff00112233445566778899aabbccddee", "0x00" );
     EXPECT_EQ(expected_post_state, get_account("0xbbccddeeff00112233445566778899aabbccddee"));
 }
 
@@ -202,10 +217,12 @@ TEST_F(challenge_tester, suicide){
     eosevm.create(accountb, "0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6");
     eosevm.create(accountb, "cd1722f3947def4cf144679da39c4c32bdc35681");
 
-    //TODO: transfer 100000000000000000000000 to 0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6
-//    eosevm.raw("f8ab018609184e72a00083271000944a40687878845ef7cfe60b5a6f2cb47627469b7780b844a9059cbb0000000000000000000000000f572e5295c57f15886f9b263e2f6d2d6c7b5ec600000000000000000000000000000000000000000000152d02c7e14af680000026a0d0b77737974af56f86db5f49b1aac8703798fd8b9cf97e03c5a4dc1966fa6025a0149779f6c95edda1ff1e4b91105f581a1da759dcebc8ec9fff69afc8356fa16d");
+    //set pre state for 0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6
+    eosevm.set_balance("0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6", "0x152d02c7e14af6800000" );
+    eosevm.set_nonce("0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6", "0x00" );
+    eosevm.set_code("0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6", "0x33ff");
 
-    EXPECT_EQ(expected_post_state, get_account("0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6"));
+    EXPECT_EQ(expected_pre_state, get_account("0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6"));
     auto result = eosevm.rawtest(
             "0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6",
             "0xcd1722f3947def4cf144679da39c4c32bdc35681",
@@ -220,6 +237,7 @@ TEST_F(challenge_tester, suicide){
 
     EXPECT_EQ((int64_t)hex_to_ui64(expected_gas_left), string_to_i64(result.gas_left));
     EXPECT_EQ(expected_output, result.output);
+    eosevm.set_nonce("0xcd1722f3947def4cf144679da39c4c32bdc35681", "0x00" );
     EXPECT_EQ(expected_post_state, get_account("0xcd1722f3947def4cf144679da39c4c32bdc35681"));
 }
 

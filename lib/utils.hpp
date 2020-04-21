@@ -151,6 +151,13 @@ uint64_t string_to_ui64(const string& str) {
     return value;
 }
 
+int64_t hex_to_i64(const string& str) {
+    int64_t value;
+    std::istringstream iss(str);
+    iss >> std::hex >> value;
+    return value;
+}
+
 uint64_t hex_to_ui64(const string& str) {
     uint64_t value;
     std::istringstream iss(str);

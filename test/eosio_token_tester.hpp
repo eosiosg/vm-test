@@ -37,7 +37,7 @@ struct transfer {
 
     void pack(vector<char>& dest) {
         dest.resize(sizeof(from)+sizeof(to)+sizeof(amount));
-        memcpy(&dest[0], &to , sizeof(to ));
+        memcpy(&dest[0], &from , sizeof(from ));
         memcpy(&dest[sizeof(from)], &to , sizeof(to ));
         memcpy(&dest[sizeof(from)+sizeof(to)], &amount , sizeof(amount ));
         pack_string(memo, dest);
@@ -61,10 +61,19 @@ protected:
 
     balance get_balance(eosio::name acc) {
         balance ret;
-        auto row = eosevm.get_table_rows(contract, "accounts"_n, acc.value);
-        ret = {string_to_i64(string(row.data()+16, row.data()+32)),
-               string_to_ui64(string(row.data()+32, row.data()+48))
+        auto row = eosevm.get_table_rows(acc, "accounts"_n, 5459781);
+        ret = {hex_to_i64(to_little_endian(string(row.data(), row.data()+16))),
+               hex_to_ui64(to_little_endian(string(row.data()+16, row.data()+32)))
         };
+        return ret;
+    }
+private:
+    string to_little_endian(string str) {
+        auto ret = str;
+        for (auto i = 0; i < str.size(); i+=2) {
+            ret[i] = str[str.size()-2-i];
+            ret[i+1] = str[str.size()-1-i];
+        }
         return ret;
     }
 };

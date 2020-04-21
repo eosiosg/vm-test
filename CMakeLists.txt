@@ -36,12 +36,12 @@ else()
     message(STATUS "JSONCPP Version: ${JSONCPP_VERSION} ${JSONCPP_INCLUDE_DIR} ${JSONCPP_LIBRARIES}")
 endif()
 
-set(include_dir ${CMAKE_CURRENT_SOURCE_DIR}/include)
+set(include_dir ${PROJECT_SOURCE_DIR}/include)
+file(GLOB SOURCES $${PROJECT_SOURCE_DIR}/lib/*.hpp ${CMAKE_CURRENT_SOURCE_DIR}/lib/*.cpp)
+list(REMOVE_ITEM SOURCES "${PROJECT_SOURCE_DIR}/lib/execution.cpp" "${PROJECT_SOURCE_DIR}/lib/execution.hpp" "${PROJECT_SOURCE_DIR}/lib/eosevm.cpp")
 
 add_subdirectory(lib)
 
 add_subdirectory(vm)
 add_subdirectory(test)
 add_subdirectory(secp256k1)
-
-

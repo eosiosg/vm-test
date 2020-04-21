@@ -6,7 +6,7 @@
 TEST_F(eosio_token_tester, create){
     create params = {alice, {10000000000000, 1397703940}};
     eosevm.exec("create", params);
-    EXPECT_EQ(1, 1);
+    EXPECT_TRUE(1);
 }
 
 TEST_F(eosio_token_tester, issue){

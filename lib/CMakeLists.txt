@@ -1,21 +1,9 @@
-#include(LibraryTools)
-
 add_library(eosevm SHARED
         ${include_dir}/eosevm.h
-        mocked_context.hpp
         eosevm.cpp
         execution.cpp
         execution.hpp
-        base58.cpp
-        base58.hpp
-        check.hpp
-        name.hpp
-        cypto.cpp
-        cypto.hpp
-        serialization.cpp
-        serialization.hpp
-        utils.hpp
-        contract/challenge_contract.hpp)
+        ${SOURCES})
 
 target_link_libraries(eosevm PUBLIC evmc::evmc eos-vm OpenSSL::SSL secp256k1 ${JSONCPP_LIBRARIES})
 target_include_directories(eosevm PUBLIC

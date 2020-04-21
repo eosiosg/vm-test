@@ -281,17 +281,17 @@ namespace vmtest {
         }
         void addNode(const size_t& hashCode, const string& name, const size_t& bytes,
                 const DataSerializeFunc& f1, const DataDeserializeFunc& f2) {
-            if(!reflectTable.insert(make_pair(hashCode, Node(CALLABLE, name, bytes, f1, f2))).second)
-                cerr << "Warning: insert reflectTable failed of " << name << "." << endl;
+            reflectTable.insert(make_pair(hashCode, Node(CALLABLE, name, bytes, f1, f2)));
+//                cerr << "Warning: insert reflectTable failed of " << name << "." << endl;
         }
         void addNode(const size_t& hashCode, const string& name, const size_t& bytes, const vector<SubNodeType>& l) {
-            if(!reflectTable.insert(make_pair(hashCode, Node(NO_CALLABLE, name, bytes, l))).second)
-                cerr << "Warning: insert reflectTable failed of " << name << "." << endl;
+            reflectTable.insert(make_pair(hashCode, Node(NO_CALLABLE, name, bytes, l)));
+//                cerr << "Warning: insert reflectTable failed of " << name << "." << endl;
         }
         pair<bool, const Node*> get(size_t hash) {
             auto iter = reflectTable.find(hash);
             if(iter == reflectTable.end()) {
-                cerr << "Warning: type not register in table" << endl;
+                cerr << "type not register in table" << endl;
                 return make_pair(false, nullptr);
             }
             return make_pair(true, &iter->second);

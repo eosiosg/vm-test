@@ -182,7 +182,7 @@ private:
 };
 
 template<typename secondary_key>
-struct secondary_key_type {
+struct secondary_db_type {
 
     typedef vector<pair<primary_key_type, secondary_key>> secondary_index_type;
     map<table_id_type, secondary_index_type> sec_indexes = {};
@@ -265,9 +265,12 @@ struct secondary_key_type {
     }
 
     auto remove_row(table_id_type table, primary_key_type primary) {
-        for (auto itr = sec_indexes[table].begin(); itr != sec_indexes[table].end(); itr++) {
+        auto itr =  sec_indexes[table].begin();
+        while (itr != sec_indexes[table].end()) {
             if (itr->first == primary) {
-                sec_indexes[table].erase(itr);
+                itr = sec_indexes[table].erase(itr);
+            } else {
+                ++itr;
             }
         }
         if (sec_indexes[table].empty()) sec_indexes.erase(table);
@@ -501,7 +504,7 @@ struct context {
 using namespace eosio::chain;
 class mocked_context {
 public:
-    mocked_context(context ctx, bytes action_data, db_type& db, secondary_key_type<uint64_t>&  i64_index, secondary_key_type<array<uint128_t, 2>>& i256_index, keyvalue_cache& keyval_cache, sec_keyvalue_cache<i64_sec_kv_type>& i64_sec_keyval_cache, sec_keyvalue_cache<i256_sec_kv_type>& i256_sec_keyval_cache, map<string, string>& output)
+    mocked_context(context ctx, bytes action_data, db_type& db, secondary_db_type<uint64_t>&  i64_index, secondary_db_type<array<uint128_t, 2>>& i256_index, keyvalue_cache& keyval_cache, sec_keyvalue_cache<i64_sec_kv_type>& i64_sec_keyval_cache, sec_keyvalue_cache<i256_sec_kv_type>& i256_sec_keyval_cache, map<string, string>& output)
             :ctx(ctx)
             ,action_data(std::move(action_data))
             ,db(db)
@@ -1140,8 +1143,8 @@ private:
     sec_keyvalue_cache<i64_sec_kv_type>&      i64_sec_keyval_cache;
     sec_keyvalue_cache<i256_sec_kv_type>&     i256_sec_keyval_cache;
     db_type&                                  db;
-    secondary_key_type<uint64_t>&             i64_index;
-    secondary_key_type<array<uint128_t, 2>>&  i256_index;
+    secondary_db_type<uint64_t>&             i64_index;
+    secondary_db_type<array<uint128_t, 2>>&  i256_index;
     bytes                                     action_data = {};
     context                                   ctx;
 public:
