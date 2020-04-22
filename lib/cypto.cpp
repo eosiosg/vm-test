@@ -78,7 +78,7 @@ public_key::public_key(const signature& sig, const sha256& digest, bool require_
     }
     unsigned int pk_len;
     storage.resize(33);
-    secp256k1_ecdsa_recover_compact(_get_context(), (unsigned char*) digest.data(), (unsigned char*) sig.data() + 1, (unsigned char*) storage.data(), (int *) &pk_len, (int) 1, (*sig.data() - 27) & 3 );
+    auto ret = secp256k1_ecdsa_recover_compact(_get_context(), (unsigned char*) digest.data(), (unsigned char*) sig.data() + 1, (unsigned char*) storage.data(), (int *) &pk_len, (int) 1, (*sig.data() - 27) & 3 );
 }
 
 pair<bool, size_t> public_key::serialize(void* pDstBuffer, const void* pData, size_t bufferSize) {
