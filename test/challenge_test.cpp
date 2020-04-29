@@ -280,7 +280,7 @@ TEST_F(challenge_tester, suicide0){
          "0x5af3107a4000",
          "0xcd1722f3947def4cf144679da39c4c32bdc35681",
          "0x0186a0",
-         {(int)(string_to_i64("0x00")), (uint64_t) string_to_i64("0x01")}
+         {(int)(hex_to_i64("0x00")), (uint64_t) hex_to_i64("0x01")}
     );
 
     EXPECT_EQ((int64_t)hex_to_ui64(expected_gas_left), string_to_i64(result.gas_left));
@@ -327,7 +327,7 @@ TEST_F(challenge_tester, suicideNotExistingAccount){
             "0x5af3107a4000",
             "0xcd1722f3947def4cf144679da39c4c32bdc35681",
             "0x0186a0",
-            {(int)(string_to_i64("0x00")), (uint64_t) string_to_i64("0x01")}
+            {(int)(hex_to_i64("0x00")), (uint64_t) hex_to_i64("0x01")}
             );
 
     EXPECT_EQ((int64_t)hex_to_ui64(expected_gas_left), string_to_i64(result.gas_left));
@@ -374,7 +374,7 @@ TEST_F(challenge_tester, push32AndSuicide){
             "0x5af3107a4000",
             "0xcd1722f3947def4cf144679da39c4c32bdc35681",
             "0x0de0b6b3a7640000",
-            {(int)(string_to_i64("0x00")), (uint64_t) string_to_i64("0x01")}
+            {(int)(hex_to_i64("0x00")), (uint64_t) hex_to_i64("0x01")}
     );
 
     EXPECT_EQ((int64_t)hex_to_ui64(expected_gas_left), string_to_i64(result.gas_left));
@@ -383,7 +383,7 @@ TEST_F(challenge_tester, push32AndSuicide){
 }
 
 TEST_F(challenge_tester, suicide){
-    // https://github.com/ethereum/tests/tree/7497b116a019beb26215cbea4028df068dea06be/VMTests/vmTests
+    // https://github.com/ethereum/tests/tree/7497b116a019beb26215cbea4028df068dea06be/VMTests/vmTests/suicide.json
 
     account_type expected_pre_state {
             "0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6",
@@ -417,7 +417,7 @@ TEST_F(challenge_tester, suicide){
             "0x5af3107a4000",
             "0xcd1722f3947def4cf144679da39c4c32bdc35681",
             "0x0de0b6b3a7640000",
-            {(int)(string_to_i64("0x00")), (uint64_t) string_to_i64("0x01")}
+            {(int)(hex_to_i64("0x00")), (uint64_t) hex_to_i64("0x01")}
     );
 
     EXPECT_EQ((int64_t)hex_to_ui64(expected_gas_left), string_to_i64(result.gas_left));

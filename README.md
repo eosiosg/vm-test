@@ -4,7 +4,7 @@ This project provides a light, standalone eos-vm testing environment, which can 
 For now this tool is designated for the [challenge](https://github.com/eosiosg/eos-challenge), to execute evm transactions. See [1](https://eosio.devpost.com/) for more deails.
 
 ## Dependency
-### 1. [jsconcpp](https://github.com/open-source-parsers/jsoncpp)  
+### 1. [jsoncpp](https://github.com/open-source-parsers/jsoncpp)  
 #### Linux:  
 `sudo apt-get install libjsoncpp-dev`
 #### Mac OS:
