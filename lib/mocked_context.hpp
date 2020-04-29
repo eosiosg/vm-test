@@ -874,7 +874,7 @@ public:
     }
 
     uint64_t current_time() {
-        return ctx.timestamp;
+        return ctx.timestamp * 1000000; //convert from seconds to microseconds
     }
 
     int get_active_producers(const char *producers, size_t buffer_size) {
@@ -947,9 +947,7 @@ public:
         array<uint128_t, 2> secondary;
         copy(data.value, data.value + data_len, secondary.begin());
 
-
         if (!i256_index.lowerbound(tb->second, primary, secondary)) return -2;
-
 
         auto idx = i256_sec_keyval_cache.find(pair{scope, table}, primary);
         if (idx >= 0) return idx;
